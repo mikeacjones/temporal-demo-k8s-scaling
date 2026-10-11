@@ -57,7 +57,7 @@ The host-side processes (dev server, Prometheus port-forward, dashboard) run und
 ## Booth checklist
 
 1. Give Docker Desktop ≥ 8 GB RAM. Turn off sleep and the screen saver.
-2. `make up`, then open `http://localhost:8080/?kiosk=1` full screen. Put `k9s` (`make k9s`) on a second screen.
+2. `make up`, then open `http://localhost:8080/?kiosk=1`. The dashboard always fits its window without scrolling: full screen on a TV, a small monitor, or half the screen next to `k9s` (`make k9s`). It switches to a stacked layout in narrow windows and hides secondary text when space is tight.
 3. Keep a staff tab at `?controls=1` for **Surge ⚡** (extra traffic for 60s), **Pause**, and **Roll out version**.
 4. The dashboard only listens on `127.0.0.1` because the control endpoints are unauthenticated. To expose it, set `WEB_ADDR=0.0.0.0:8080`, but only on a trusted network.
 
