@@ -10,7 +10,8 @@ mkdir -p .run bin
 echo $$ > .run/booth.pid
 
 PROFILE="${PROFILE:-temporal-demo}"
-WEB_ADDR="${WEB_ADDR:-:8080}"
+# Localhost only by default: the staff-control endpoints are unauthenticated.
+WEB_ADDR="${WEB_ADDR:-127.0.0.1:8080}"
 PROM_PORT="${PROM_PORT:-9091}"
 TEMPORAL_PORT="${TEMPORAL_PORT:-7233}"
 UI_PORT=$((TEMPORAL_PORT + 1000))
@@ -42,7 +43,9 @@ supervise() {
 
 supervise temporal temporal server start-dev \
   --ip 0.0.0.0 --port "$TEMPORAL_PORT" --ui-ip 127.0.0.1 --ui-port "$UI_PORT" \
-  --log-level warn --ui-disable-news-fetch
+  --log-level warn --ui-disable-news-fetch \
+  --dynamic-config-value matching.wv.VersionDrainageStatusVisibilityGracePeriod='"30s"' \
+  --dynamic-config-value matching.wv.VersionDrainageStatusRefreshInterval='"10s"' 
 
 supervise port-forward kubectl --context "$PROFILE" -n monitoring \
   port-forward svc/prometheus-server "$PROM_PORT:80"
@@ -50,5 +53,5 @@ supervise port-forward kubectl --context "$PROFILE" -n monitoring \
 supervise web env TEMPORAL_ADDRESS="localhost:$TEMPORAL_PORT" TEMPORAL_NAMESPACE=default KUBE_CONTEXT="$PROFILE" PROMETHEUS_URL="http://localhost:$PROM_PORT" \
   WEB_ADDR="$WEB_ADDR" TEMPORAL_UI_URL="http://localhost:$UI_PORT" ./bin/web
 
-echo "booth supervisor running (pid $$). Dashboard: http://localhost${WEB_ADDR}  Temporal UI: http://localhost:$UI_PORT"
+echo "booth supervisor running (pid $$). Dashboard: http://${WEB_ADDR}  Temporal UI: http://localhost:$UI_PORT"
 wait

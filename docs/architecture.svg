@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">
+  <defs>
+    <linearGradient id="uv" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#b664ff"/><stop offset="1" stop-color="#444ce7"/></linearGradient>
+    <linearGradient id="bg" x1="1" y1="0" x2="0" y2="1"><stop offset=".28" stop-color="#211b4e"/><stop offset="1" stop-color="#141414"/></linearGradient>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1ff1a5"/></marker>
+  </defs>
+  <rect width="960" height="470" fill="url(#bg)"/>
+  <g fill="none" stroke-width="1.5">
+    <!-- laptop host -->
+    <rect x="20" y="20" width="250" height="430" stroke="#465a78" stroke-dasharray="5 4"/>
+    <!-- minikube -->
+    <rect x="300" y="20" width="640" height="430" stroke="#465a78" stroke-dasharray="5 4"/>
+  </g>
+  <g fill="#cacbf9" font-size="12" letter-spacing=".06em">
+    <text x="36" y="44">LAPTOP</text>
+    <text x="316" y="44">MINIKUBE</text>
+  </g>
+  <g font-size="13">
+    <!-- host boxes -->
+    <rect x="40" y="64" width="210" height="96" fill="#141414" stroke="url(#uv)" stroke-width="2"/>
+    <text x="56" y="92" fill="#f8fafc" font-size="15">Temporal dev server</text>
+    <text x="56" y="114" fill="#92a4c3">task queues: orders,</text>
+    <text x="56" y="132" fill="#92a4c3">traffic-director</text>
+    <text x="56" y="150" fill="#92a4c3">UI :8233</text>
+
+    <rect x="40" y="190" width="210" height="80" fill="#141414" stroke="#243349"/>
+    <text x="56" y="218" fill="#f8fafc" font-size="15">Dashboard (Go)</text>
+    <text x="56" y="240" fill="#92a4c3">SSE · :8080</text>
+    <text x="56" y="258" fill="#92a4c3">Temporal + k8s + Prom</text>
+
+    <rect x="40" y="300" width="210" height="64" fill="#141414" stroke="#243349"/>
+    <text x="56" y="328" fill="#f8fafc" font-size="15">k9s</text>
+    <text x="56" y="348" fill="#92a4c3">watch pods scale</text>
+
+    <!-- cluster boxes -->
+    <rect x="320" y="64" width="190" height="96" fill="#141414" stroke="#b664ff"/>
+    <text x="336" y="92" fill="#f8fafc" font-size="15">traffic-director</text>
+    <text x="336" y="114" fill="#92a4c3">entity workflow worker</text>
+    <text x="336" y="132" fill="#92a4c3">1 pod, never scaled</text>
+    <text x="336" y="150" fill="#92a4c3">patches version label</text>
+
+    <rect x="540" y="64" width="380" height="96" fill="#141414" stroke="#243349"/>
+    <text x="556" y="92" fill="#f8fafc" font-size="15">Temporal Worker Controller</text>
+    <text x="556" y="114" fill="#92a4c3">WorkerDeployment (Progressive 25→50→100%)</text>
+    <text x="556" y="132" fill="#92a4c3">WorkerResourceTemplate → ScaledObject</text>
+    <text x="556" y="150" fill="#92a4c3">per Build ID · Connection → dev server</text>
+
+    <rect x="540" y="190" width="380" height="80" fill="#141414" stroke="#243349"/>
+    <text x="556" y="218" fill="#f8fafc" font-size="15">KEDA (one ScaledObject per version)</text>
+    <text x="556" y="240" fill="#92a4c3">temporal: version backlog / 5 per pod</text>
+    <text x="556" y="258" fill="#92a4c3">prometheus: slot utilization &gt; 70%</text>
+
+    <rect x="320" y="190" width="190" height="80" fill="#141414" stroke="#243349"/>
+    <text x="336" y="218" fill="#f8fafc" font-size="15">Prometheus</text>
+    <text x="336" y="240" fill="#92a4c3">scrapes SDK metrics</text>
+    <text x="336" y="258" fill="#92a4c3">temporal_slot_util…</text>
+
+    <rect x="320" y="300" width="600" height="130" fill="#141414" stroke="url(#uv)" stroke-width="2"/>
+    <text x="336" y="328" fill="#f8fafc" font-size="15">order-worker, one Deployment per Build ID</text>
+    <g>
+      <rect x="336" y="346" width="270" height="66" fill="#1ff1a512" stroke="#1ff1a5"/>
+      <text x="350" y="370" fill="#1ff1a5">aurora · current</text>
+      <g fill="#1ff1a5"><rect x="350" y="384" width="14" height="14"/><rect x="370" y="384" width="14" height="14"/><rect x="390" y="384" width="14" height="14"/><rect x="410" y="384" width="14" height="14"/><rect x="430" y="384" width="14" height="14"/><rect x="450" y="384" width="14" height="14"/></g>
+      <rect x="624" y="346" width="280" height="66" fill="#ff6bff12" stroke="#ff6bff"/>
+      <text x="638" y="370" fill="#ff6bff">nebula · ramping 25%</text>
+      <g fill="#ff6bff"><rect x="638" y="384" width="14" height="14"/><rect x="658" y="384" width="14" height="14"/></g>
+    </g>
+  </g>
+  <g stroke="#1ff1a5" stroke-width="1.5" fill="none" marker-end="url(#a)">
+    <path d="M320 112 H254"/>
+    <path d="M254 140 H290 V330 H316"/>
+    <path d="M415 270 V296"/>
+    <path d="M540 230 H514"/>
+    <path d="M730 160 V186"/>
+    <path d="M730 270 V296"/>
+  </g>
+  <g fill="#cacbf9" font-size="11">
+    <text x="266" y="104">orders</text>
+    <text x="262" y="300" transform="rotate(-90 262 300)">task polling</text>
+    <text x="736" y="180">renders</text>
+    <text x="516" y="222">queries</text>
+    <text x="421" y="290">scrapes</text>
+    <text x="736" y="290">scales</text>
+  </g>
+</svg>

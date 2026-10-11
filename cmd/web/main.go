@@ -25,7 +25,7 @@ import (
 )
 
 func main() {
-	addr := flag.String("addr", telemetry.Env("WEB_ADDR", ":8080"), "listen address")
+	addr := flag.String("addr", telemetry.Env("WEB_ADDR", "127.0.0.1:8080"), "listen address")
 	promURL := flag.String("prometheus", telemetry.Env("PROMETHEUS_URL", "http://localhost:9091"), "Prometheus base URL")
 	kubeContext := flag.String("kube-context", telemetry.Env("KUBE_CONTEXT", "temporal-demo"), "kubeconfig context")
 	k8sNS := flag.String("k8s-namespace", telemetry.Env("K8S_NAMESPACE", "demo"), "namespace of the demo workloads")
