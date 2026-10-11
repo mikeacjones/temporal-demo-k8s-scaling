@@ -22,7 +22,7 @@ KEDA_CHART_VERSION       ?= 2.21.0
 CERT_MANAGER_VERSION     ?= v1.21.2
 PROMETHEUS_CHART_VERSION ?= 29.36.1
 
-.PHONY: up tools cluster platform images dashboard deploy booth booth-fg stop down reset k9s k9s-window status logs test web
+.PHONY: up tools cluster platform images dashboard deploy booth booth-fg stop down reset k9s k9s-window status logs test web record
 
 up: tools booth cluster platform images deploy status ## Bring up the whole demo
 	@echo; echo "Dashboard:   http://localhost:8080   (k9s panel: press k, or ?k9s=1; staff controls: ?controls=1)"
@@ -112,3 +112,6 @@ web: ## Run the dashboard locally for development (no k9s panel outside the clus
 
 test:
 	go test ./...
+
+record: ## Record one full traffic cycle into docs/demo.{mp4,gif} (needs `make up` running)
+	go run -C tools/record . -url http://127.0.0.1:8080 -out $(CURDIR)/docs

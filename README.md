@@ -1,5 +1,9 @@
 # Temporal Worker Autoscaling on Kubernetes
 
+[![One full traffic cycle at 10× speed: traffic ramps up, KEDA scales the workers from 1 to 10+ pods while a new worker version rolls out progressively, then traffic and pods drain back down](docs/demo.gif)](docs/demo.mp4)
+
+<sub>One full ~5-minute traffic cycle at 10× speed, recorded from the live dashboard with `make record`. A new worker version (Quasar) ramps in 25% → 50% → 100% while Nebula drains, and the embedded k9s shows the real pods. Click for the [higher-quality MP4](docs/demo.mp4).</sub>
+
 A self-running booth demo of **Temporal workers that scale themselves** on Kubernetes. It runs on a laptop, written in Go, with:
 
 - the [Temporal Worker Controller](https://github.com/temporalio/temporal-worker-controller) managing **versioned** workers (Worker Versioning, progressive rollouts, pinned workflows)
@@ -53,6 +57,7 @@ The host-side processes run under `scripts/booth.sh`, which restarts any of them
 | `make dashboard` | Rebuild and roll only the dashboard, without triggering a worker rollout |
 | `make deploy` | Re-apply manifests. With new images (`make images deploy`) this is a manual rollout. |
 | `make test` | Unit tests |
+| `make record` | Re-record `docs/demo.{gif,mp4}`: one full cycle from the live dashboard (headless Chrome + ffmpeg) |
 
 > **Already running a dev server on 7233?** Use another port for the demo: `make up TEMPORAL_PORT=7243` (the UI is then on 8243).
 
