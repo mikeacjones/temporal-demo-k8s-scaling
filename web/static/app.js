@@ -11,14 +11,15 @@
   };
   const colorFor = (label) => VERSION_COLORS[label] || "#a5a9f5";
   const PHASE_TEXT = {
-    idle: ["Cruising at idle. One pod has this covered.", "Quiet skies. Ziggy's just floating.", "Low traffic: KEDA keeps one warm pod per version."],
-    "ramp-up": ["Here comes the traffic! Backlog incoming…", "Slots filling up, KEDA is adding pods!", "Thrusters on: scaling out."],
-    peak: ["Peak load! All pods on deck!", "Every slot is busy. Look at those pods!", "Maximum warp!"],
-    "ramp-down": ["Traffic easing off…", "Backlog drained. Pods heading home soon.", "Winding down gracefully."],
-    cooldown: ["Cooling off. KEDA scales back in.", "Fewer pods, same durable workflows.", "Back to cruising altitude."],
-    paused: ["Traffic paused. Ziggy is taking a nap."],
+    idle: ["Drifting in orbit. One pod has this covered.", "All quiet on the space station.", "Low traffic: KEDA keeps one warm pod per version."],
+    "ramp-up": ["Incoming traffic on the scanners!", "Slots filling up. KEDA is launching pods!", "Thrusters on: scaling out."],
+    peak: ["Peak load! All pods to their stations!", "Every slot is busy. Full thrust!", "Maximum warp!"],
+    "ramp-down": ["Traffic easing off. Throttling back…", "Backlog cleared. Pods preparing for re-entry.", "Coasting down gracefully."],
+    cooldown: ["Back to cruising speed.", "Fewer pods, same durable workflows.", "KEDA brings the extra pods back to base."],
+    paused: ["Traffic paused. Ziggy is floating in zero-g."],
     connecting: ["Warming up the thrusters…"],
   };
+
 
   if (params.has("kiosk")) document.body.classList.add("kiosk");
 
