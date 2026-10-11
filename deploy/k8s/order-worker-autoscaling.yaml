@@ -37,6 +37,9 @@ spec:
                   periodSeconds: 15
       triggers:
         - type: temporal
+          # Serve the HPA from KEDA's polled value instead of a second Temporal
+          # API call per HPA sync (the controller's scaling recommendations).
+          useCachedMetrics: true
           metadata:
             endpoint: host.minikube.internal:7233
             taskQueue: orders
@@ -47,6 +50,7 @@ spec:
             workerDeploymentName: ""
             workerDeploymentBuildId: ""
         - type: prometheus
+          useCachedMetrics: true
           # Value (not AverageValue): utilization is already a ratio across
           # the version's pods, so HPA scales by current/target.
           metricType: Value
