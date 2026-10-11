@@ -370,7 +370,7 @@ body.k9s-on .footer { display: none; }
 /* While k9s is open it sits beside the pod constellation (k9s on the wide
    side), so the chart keeps its height. Its row is exactly as tall as k9s needs. */
 body.k9s-on .app, body.k9s-on.fit-3 .app {
-  grid-template-rows: auto auto auto auto minmax(8rem, 1fr) auto 0;
+  grid-template-rows: auto auto auto auto minmax(12rem, 1fr) auto 0;
   grid-template-areas:
     "top    top"
     "hero   ziggy"
@@ -380,9 +380,14 @@ body.k9s-on .app, body.k9s-on.fit-3 .app {
     "k9s    pods"
     "foot   foot";
 }
+/* The k9s row is exactly the terminal's (fixed) height: the constellation
+   beside it fills that height but never adds to it, so it can't push the
+   chart around as pods come and go. */
+body.k9s-on .constellation-card { contain: size; }
 @media (max-aspect-ratio: 5/4) {
+  body.k9s-on .constellation-card { contain: none; }
   body.k9s-on .app, body.k9s-on.fit-3 .app {
-    grid-template-rows: auto auto auto auto minmax(8rem, 1fr) minmax(6rem, .7fr) auto 0;
+    grid-template-rows: auto auto auto auto minmax(12rem, 1fr) minmax(6rem, .7fr) auto 0;
     grid-template-areas:
       "top      top"
       "hero     ziggy"

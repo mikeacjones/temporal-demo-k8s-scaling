@@ -427,9 +427,6 @@
     renderKPIs(snap);
     renderVersions(snap);
     renderPods(snap);
-    // k9s lists every pod in the namespace: workers (incl. terminating), the
-    // traffic director, and this dashboard's own pod.
-    k9s.setPodCount((snap.pods || []).length + (snap.directorPod ? 1 : 0) + 1);
     const vc = (snap.versions || []).length;
     if (vc !== versionCount) { versionCount = vc; scheduleFit(); }
     const d = snap.director;
@@ -441,14 +438,15 @@
   }
 
   // ---------------------------------------------------------- embedded k9s
-  // A real k9s streamed from a PTY on the dashboard server. The panel is only
-  // as tall as the pod list needs: it grows as soon as pods appear and shrinks
-  // only after the count has been lower for a while, so the layout stays calm.
+  // A real k9s streamed from a PTY on the dashboard server. The panel has a
+  // FIXED height (sized for a full peak) so neither the pod count nor the
+  // constellation beside it can squeeze the live chart above it. During a
+  // rollout, when pods outnumber rows, k9s scrolls its own table.
   const k9s = (() => {
     const panel = $("k9s-panel"), wrap = $("term"), btn = $("k9s-toggle");
     const CHROME_ROWS = 5;      // k9s info line, table border/title, column header, bottom border, spare
+    const PEAK_PODS = 12;       // max workers (10) + traffic director + this dashboard
     const MIN_ROWS = 7;
-    const SHRINK_DELAY = 20000; // ms the pod count must stay lower before shrinking
     let term = null, fitAddon = null, ws = null, on = false, available = false, writable = false;
     const hint = $("k9s-hint");
     const IDLE_HINT = () => writable
@@ -458,12 +456,13 @@
       panel.classList.toggle("focused", f);
       hint.innerHTML = f ? "you have control · <kbd>↑↓</kbd> select · <kbd>ctrl-d</kbd> delete · <kbd>?</kbd> help · click outside to release" : IDLE_HINT();
     };
-    let rows = 0, wantRows = 0, shrinkTimer = 0, retry = 0;
+    let rows = 0, retry = 0;
 
     // Terminal text scales with the window but never gets unreadably small.
     const fontPx = () => Math.max(10, Math.round(Math.min(innerHeight * 0.0105, innerWidth * 0.0072)));
     const cellH = () => term?._core?._renderService?.dimensions?.css?.cell?.height || fontPx() * 1.2;
-    const maxRows = () => Math.max(MIN_ROWS, Math.floor((innerHeight * 0.42) / cellH()));
+    // Never more than ~a third of the window, so the chart keeps its room.
+    const fixedRows = () => Math.max(MIN_ROWS, Math.min(PEAK_PODS + CHROME_ROWS, Math.floor((innerHeight * 0.34) / cellH())));
 
     function sendSize() {
       if (!term) return;
@@ -475,14 +474,6 @@
       wrap.style.height = `${Math.ceil(n * cellH()) + 6}px`;
       // Let the height transition settle, then refit the terminal and the page.
       setTimeout(() => { sendSize(); scheduleFit(); }, 380);
-    }
-    function setPodCount(count) {
-      if (!on || !term) return;
-      wantRows = Math.min(maxRows(), Math.max(MIN_ROWS, count + CHROME_ROWS));
-      if (wantRows > rows) { clearTimeout(shrinkTimer); shrinkTimer = 0; applyRows(wantRows); }
-      else if (wantRows < rows && !shrinkTimer) {
-        shrinkTimer = setTimeout(() => { shrinkTimer = 0; if (wantRows < rows) applyRows(wantRows); }, SHRINK_DELAY);
-      }
     }
     function connect() {
       if (!on) return;
@@ -520,11 +511,10 @@
       term.textarea.addEventListener("focus", () => setFocused(true));
       term.textarea.addEventListener("blur", () => setFocused(false));
       setFocused(false);
-      applyRows(MIN_ROWS + 4);
+      applyRows(fixedRows());
       connect();
     }
     function stop() {
-      clearTimeout(shrinkTimer); shrinkTimer = 0;
       if (ws) { const w = ws; ws = null; w.onclose = null; w.close(); }
       if (term) { term.dispose(); term = null; }
       rows = 0;
@@ -558,9 +548,9 @@
     addEventListener("resize", () => {
       if (!term) return;
       term.options.fontSize = fontPx();
-      setTimeout(() => applyRows(Math.min(maxRows(), Math.max(rows, MIN_ROWS))), 50);
+      setTimeout(() => applyRows(fixedRows()), 50);
     });
-    return { enable, setPodCount };
+    return { enable };
   })();
 
   // ------------------------------------------------------------ data feed
