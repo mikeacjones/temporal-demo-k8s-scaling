@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Temporal Autoscaling Demo</title>
+  <meta name="description" content="Temporal Worker Controller + KEDA autoscaling, live.">
+  <meta name="theme-color" content="#141414">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/noto-sans-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <div class="grid-floor" aria-hidden="true"></div>
+  <div class="blur-container" aria-hidden="true">
+    <div class="blur-pink"></div><div class="blur-yellow"></div><div class="blur-green"></div>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="https://temporal.io" target="_blank" rel="noopener">
+      <img src="img/temporal-logo.svg" alt="Temporal" width="172" height="44">
+    </a>
+    <div class="health" id="health" aria-label="System health">
+      <span class="dot" data-k="temporal">Temporal</span>
+      <span class="dot" data-k="director">Director</span>
+      <span class="dot" data-k="kubernetes">Kubernetes</span>
+      <span class="dot" data-k="prometheus">Metrics</span>
+    </div>
+    <a class="button secondary ultraviolet small" id="temporal-ui" href="http://localhost:8233" target="_blank" rel="noopener">Temporal UI ↗</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Temporal Worker Controller · KEDA · Worker Versioning</p>
+        <h1 class="display">Workers that <span class="text-gradient-ultraviolet">scale themselves.</span></h1>
+        <p class="lede">
+          A <strong>traffic director</strong> workflow sends waves of orders. KEDA watches each worker version's
+          <strong>task queue backlog</strong> and <strong>slot utilization</strong>, and the Worker Controller
+          runs every version side by side, ramping new ones in while old ones drain.
+        </p>
+      </div>
+      <div class="ziggy-stage" id="ziggy-stage" data-phase="idle">
+        <div class="speech" id="speech">Warming up the thrusters…</div>
+        <div class="ziggy-orbit">
+          <img class="ziggy" src="img/ziggy.png" alt="Ziggy, the Temporal tardigrade mascot" width="1000" height="543">
+          <div class="speedlines" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cycle card glass" aria-label="Traffic cycle">
+      <div class="cycle-head">
+        <div>
+          <span class="eyebrow">Traffic cycle</span>
+          <span class="phase-pill" id="phase-pill">connecting</span>
+        </div>
+        <div class="cycle-meta mono" id="cycle-meta">—</div>
+      </div>
+      <div class="timeline" id="timeline">
+        <div class="timeline-marker" id="timeline-marker"></div>
+      </div>
+    </section>
+
+    <section class="kpis" aria-label="Key metrics">
+      <div class="card kpi">
+        <span class="kpi-label">Orders / sec</span>
+        <span class="kpi-value text-gradient-green" id="kpi-rate">0</span>
+        <span class="kpi-sub" id="kpi-rate-sub">target from director</span>
+      </div>
+      <div class="card kpi">
+        <span class="kpi-label">Task backlog</span>
+        <span class="kpi-value" id="kpi-backlog">0</span>
+        <span class="kpi-sub" id="kpi-backlog-sub">waiting in queue</span>
+      </div>
+      <div class="card kpi">
+        <span class="kpi-label">Orders in flight</span>
+        <span class="kpi-value" id="kpi-running">0</span>
+        <span class="kpi-sub" id="kpi-running-sub">running workflows</span>
+      </div>
+      <div class="card kpi">
+        <span class="kpi-label">Worker pods</span>
+        <span class="kpi-value text-gradient-ultraviolet" id="kpi-pods">0</span>
+        <span class="kpi-sub" id="kpi-pods-sub">ready / desired</span>
+      </div>
+      <div class="card kpi">
+        <span class="kpi-label">Slot utilization</span>
+        <span class="kpi-value" id="kpi-util">0%</span>
+        <div class="meter"><div class="meter-fill" id="kpi-util-bar"></div><div class="meter-target" title="KEDA target 70%"></div></div>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <div class="card chart-card">
+        <div class="card-head">
+          <h2 class="heading">Traffic vs. capacity</h2>
+          <div class="legend mono">
+            <span class="lg lg-rate">orders/s</span>
+            <span class="lg lg-backlog">backlog</span>
+            <span class="lg lg-pods">pods</span>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+      </div>
+
+      <div class="card versions-card">
+        <div class="card-head">
+          <h2 class="heading">Worker versions</h2>
+          <span class="mono muted" id="rollout-note"></span>
+        </div>
+        <div id="versions" class="versions"></div>
+      </div>
+    </section>
+
+    <section class="card constellation-card">
+      <div class="card-head">
+        <h2 class="heading">Pod constellation</h2>
+        <span class="mono muted">each pip is one activity slot (4 per pod)</span>
+      </div>
+      <div id="constellation" class="constellation"></div>
+    </section>
+
+    <section class="how" aria-label="How it works">
+      <div class="how-step">
+        <span class="how-num mono">01</span>
+        <h3>Traffic director</h3>
+        <p>An entity workflow on its own worker. It loops forever through idle → ramp → peak → ramp → cooldown, continuing-as-new every cycle.</p>
+      </div>
+      <div class="how-step">
+        <span class="how-num mono">02</span>
+        <h3>Temporal task queue</h3>
+        <p>Each order is a pinned workflow. Workers only get 4 activity slots, so traffic beyond that waits in the queue as backlog.</p>
+      </div>
+      <div class="how-step">
+        <span class="how-num mono">03</span>
+        <h3>KEDA, per version</h3>
+        <p>The Worker Controller renders one ScaledObject per Build ID that scales on that version's backlog and slot utilization.</p>
+      </div>
+      <div class="how-step">
+        <span class="how-num mono">04</span>
+        <h3>Worker Controller</h3>
+        <p>Every few cycles a new version rolls out progressively (25% → 50% → 100%) while in-flight orders drain on the old one.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-left">
+      <img class="ziggy-face" src="img/ziggy-face.png" alt="" width="400" height="427">
+      <div>
+        <p class="heading">Run this demo yourself</p>
+        <p class="mono muted">github.com/mikeacjones/temporal-k8s-scaling-demo</p>
+      </div>
+    </div>
+    <img class="qr" src="qr.png" alt="QR code linking to the demo repository" width="120" height="120">
+  </footer>
+
+  <div class="controls card glass" id="controls" hidden>
+    <span class="eyebrow">Staff controls</span>
+    <div class="controls-row">
+      <button class="button primary ultraviolet small" data-action="surge">Surge ⚡</button>
+      <button class="button secondary ultraviolet small" data-action="pause" id="btn-pause">Pause</button>
+      <button class="button secondary green small" data-action="rollout">Roll out version</button>
+    </div>
+    <span class="mono muted" id="controls-status"></span>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

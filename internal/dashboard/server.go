@@ -23,6 +23,7 @@ type Server struct {
 	temporal  client.Client
 	static    fs.FS
 	repoURL   string
+	uiURL     string
 
 	mu      sync.Mutex
 	subs    map[chan []byte]struct{}
@@ -30,8 +31,8 @@ type Server struct {
 	latest  []byte
 }
 
-func NewServer(c *Collector, tc client.Client, static fs.FS, repoURL string) *Server {
-	return &Server{collector: c, temporal: tc, static: static, repoURL: repoURL, subs: map[chan []byte]struct{}{}}
+func NewServer(c *Collector, tc client.Client, static fs.FS, repoURL, temporalUIURL string) *Server {
+	return &Server{collector: c, temporal: tc, static: static, repoURL: repoURL, uiURL: temporalUIURL, subs: map[chan []byte]struct{}{}}
 }
 
 // Run samples the collector once per second and fans the snapshot out.
@@ -78,6 +79,10 @@ func (s *Server) Handler() http.Handler {
 		_, _ = w.Write(data)
 	})
 	mux.HandleFunc("GET /qr.png", s.qr)
+	mux.HandleFunc("GET /api/info", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"temporalUi": s.uiURL, "repo": s.repoURL})
+	})
 	mux.HandleFunc("POST /api/pause", s.signal(director.SignalPause))
 	mux.HandleFunc("POST /api/resume", s.signal(director.SignalResume))
 	mux.HandleFunc("POST /api/rollout", s.signal(director.SignalRolloutNow))

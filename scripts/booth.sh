@@ -48,7 +48,7 @@ supervise port-forward kubectl --context "$PROFILE" -n monitoring \
   port-forward svc/prometheus-server "$PROM_PORT:80"
 
 supervise web env TEMPORAL_ADDRESS="localhost:$TEMPORAL_PORT" TEMPORAL_NAMESPACE=default KUBE_CONTEXT="$PROFILE" PROMETHEUS_URL="http://localhost:$PROM_PORT" \
-  WEB_ADDR="$WEB_ADDR" ./bin/web
+  WEB_ADDR="$WEB_ADDR" TEMPORAL_UI_URL="http://localhost:$UI_PORT" ./bin/web
 
 echo "booth supervisor running (pid $$). Dashboard: http://localhost${WEB_ADDR}  Temporal UI: http://localhost:$UI_PORT"
 wait

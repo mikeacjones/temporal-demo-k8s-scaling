@@ -30,6 +30,7 @@ func main() {
 	kubeContext := flag.String("kube-context", telemetry.Env("KUBE_CONTEXT", "temporal-demo"), "kubeconfig context")
 	k8sNS := flag.String("k8s-namespace", telemetry.Env("K8S_NAMESPACE", "demo"), "namespace of the demo workloads")
 	repoURL := flag.String("repo", telemetry.Env("REPO_URL", "https://github.com/mikeacjones/temporal-k8s-scaling-demo"), "URL for the QR code")
+	uiURL := flag.String("temporal-ui", telemetry.Env("TEMPORAL_UI_URL", "http://localhost:8233"), "Temporal Web UI URL for the header link")
 	flag.Parse()
 
 	logger, tlog := telemetry.Logger()
@@ -38,12 +39,6 @@ func main() {
 	if err != nil {
 		logger.Error("load client options", "error", err)
 		os.Exit(1)
-	}
-	if opts.HostPort == "" {
-		opts.HostPort = "localhost:7233"
-	}
-	if opts.Namespace == "" {
-		opts.Namespace = "default"
 	}
 	opts.Logger = tlog
 	// Lazy dial: the dashboard should come up (and show "reconnecting") even
@@ -76,7 +71,7 @@ func main() {
 	col.Run(ctx)
 
 	static, _ := fs.Sub(web.Static, "static")
-	srv := dashboard.NewServer(col, tc, static, *repoURL)
+	srv := dashboard.NewServer(col, tc, static, *repoURL, *uiURL)
 	go srv.Run(ctx)
 
 	hs := &http.Server{Addr: *addr, Handler: srv.Handler(), ReadHeaderTimeout: 5 * time.Second}
