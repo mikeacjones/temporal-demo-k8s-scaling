@@ -1,12 +1,12 @@
 # Temporal Worker Autoscaling on Kubernetes
 
-[![One full traffic cycle at 10× speed: traffic ramps up, KEDA scales the workers from 1 to 10+ pods while a new worker version rolls out progressively, then traffic and pods drain back down](docs/demo.gif)](docs/demo.mp4)
 
-<sub>One full ~5-minute traffic cycle at 10× speed, recorded from the live dashboard with `make record`. A new worker version (Quasar) ramps in 25% → 50% → 100% while Nebula drains, and the embedded k9s shows the real pods. Click for the [higher-quality MP4](docs/demo.mp4).</sub>
+https://github.com/user-attachments/assets/b7be1768-7bd7-4d46-8857-3007b42a632b
 
-A self-running booth demo of **Temporal workers that scale themselves** on Kubernetes. It runs on a laptop, written in Go, with:
 
-- the [Temporal Worker Controller](https://github.com/temporalio/temporal-worker-controller) managing **versioned** workers (Worker Versioning, progressive rollouts, pinned workflows)
+A demo of Temporal workers scaling on Kubernetes.
+
+- the [Temporal Worker Controller](https://github.com/temporalio/temporal-worker-controller) managing **versioned** workers (Worker Versioning, progressive rollouts, etc)
 - **KEDA**, one `ScaledObject` per worker version (rendered by a `WorkerResourceTemplate`), scaling on the version's **task queue backlog** *and* **slot utilization**
 - a **traffic director** entity workflow on its own worker that cycles traffic up and down forever and rolls out a new worker version every few cycles
 - a dashboard in the temporal.io look (starfield, Ziggy) with a **live, embedded k9s** showing the real pods being scheduled and removed
@@ -30,7 +30,7 @@ The design follows Temporal's [scaling recommendations](https://github.com/tempo
 
 ## Prerequisites
 
-macOS or Linux with: Docker (Desktop) with **≥ 8 GB** and 6 CPUs available, `minikube`, `kubectl`, `helm`, `go` ≥ 1.27, and the `temporal` CLI. (k9s ships inside the dashboard image; you don't need it locally.)
+macOS or Linux with: Docker (Desktop) with **≥ 8 GB** and 6 CPUs available, `minikube`, `kubectl`, `helm`, `go` ≥ 1.27, and the `temporal` CLI
 
 ## Run it
 
@@ -42,9 +42,7 @@ make k9s-window  # optional: pop k9s out into its own Terminal window
 - Dashboard: <http://localhost:8080>. Press **`k`** (or the **k9s** button, or open `?k9s=1`) for the live k9s panel. Staff controls: `?controls=1`. Big screen: `?kiosk=1`.
 - Temporal UI: <http://localhost:8233>
 
-The first run takes a few minutes while it pulls charts and images. After that, `make up` is idempotent and quick.
-
-The host-side processes run under `scripts/booth.sh`, which restarts any of them if they die: the dev server, the dashboard port-forward, and a cluster guard. The guard restarts Docker Desktop or minikube if they stop, and kicks the port-forward if the dashboard stops answering. The dev server runs **in memory**, so a restart wipes Temporal's state. That's fine: the director recreates its entity workflow within 15 seconds, and the Worker Controller re-registers the current version. Completed orders expire after 1 hour (the director enforces namespace retention), so memory stays flat all day.
+The first run takes a few minutes while it pulls charts and images. After that, `make up` is quick.
 
 | Command | |
 |---|---|
