@@ -355,6 +355,13 @@ body.fit-3 .speech { display: none; }
 .k9s-card[hidden] { display: none; }
 .k9s-card { grid-area: k9s; display: flex; flex-direction: column; padding: .55rem .8rem .6rem; }
 .k9s-card .card-head { margin-bottom: .35rem; }
+.k9s-hint { font-size: .68rem; color: var(--slate-300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.k9s-hint kbd { font-family: inherit; color: var(--off-white); border: 1px solid var(--slate-500); padding: 0 .3em; }
+.k9s-card.interactive .term-wrap { cursor: pointer; }
+/* Staff has the keyboard: make it unmistakable. */
+.k9s-card.focused { border-color: var(--green); box-shadow: 0 0 0 1px var(--green), 0 0 1.5rem rgba(31, 241, 165, .25); }
+.k9s-card.focused .k9s-hint { color: var(--green); }
+.k9s-card.focused .term-wrap { cursor: auto; }
 /* Height is set inline by app.js: (pod rows + k9s chrome) × line height. */
 .term-wrap { height: 10rem; min-height: 0; overflow: hidden; background: #0e0f15; border: 1px solid var(--border); padding: .2rem .35rem; transition: height .35s ease; }
 .term-wrap .xterm, .term-wrap .xterm-viewport { background: transparent !important; }

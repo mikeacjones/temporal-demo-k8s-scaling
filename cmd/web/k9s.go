@@ -18,7 +18,10 @@ const saDir = "/var/run/secrets/kubernetes.io/serviceaccount"
 // inClusterK9s prepares k9s to run inside the dashboard pod, isolated from
 // any developer kubeconfig: it sees exactly what the pod's service account
 // (read-only, demo namespace) can see. Returns the command and environment.
-func inClusterK9s(namespace, workDir string) ([]string, []string, error) {
+//
+// With allowDelete, k9s runs in write mode; RBAC still limits it to deleting
+// pods in the namespace (so staff can kill a worker and show it come back).
+func inClusterK9s(namespace, workDir string, allowDelete bool) ([]string, []string, error) {
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, nil, err
@@ -73,8 +76,12 @@ current-context: demo
 		return nil, nil, fmt.Errorf("write kubeconfig: %w", err)
 	}
 
+	mode := "--readonly"
+	if allowDelete {
+		mode = "--write"
+	}
 	cmd := []string{bin, "--context", "demo", "-n", namespace, "-c", "pods",
-		"--readonly", "--headless", "--logoless", "--crumbsless", "--splashless", "--refresh", "1"}
+		mode, "--headless", "--logoless", "--crumbsless", "--splashless", "--refresh", "1"}
 	env := []string{
 		"K9S_CONFIG_DIR=" + cfgDir,
 		"KUBECONFIG=" + kubeconfig,
@@ -97,7 +104,7 @@ func runK9s() {
 		fmt.Fprintln(os.Stderr, "k9s:", err)
 		os.Exit(1)
 	}
-	cmd, env, err := inClusterK9s(ns, work)
+	cmd, env, err := inClusterK9s(ns, work, os.Getenv("K9S_ALLOW_DELETE") == "true")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "k9s is only available inside the dashboard pod:", err)
 		os.Exit(1)

@@ -449,7 +449,15 @@
     const CHROME_ROWS = 5;      // k9s info line, table border/title, column header, bottom border, spare
     const MIN_ROWS = 7;
     const SHRINK_DELAY = 20000; // ms the pod count must stay lower before shrinking
-    let term = null, fitAddon = null, ws = null, on = false, available = false;
+    let term = null, fitAddon = null, ws = null, on = false, available = false, writable = false;
+    const hint = $("k9s-hint");
+    const IDLE_HINT = () => writable
+      ? "click to take control · <kbd>ctrl-d</kbd> delete pod · click outside to release"
+      : "k9s · read-only · namespace demo";
+    const setFocused = (f) => {
+      panel.classList.toggle("focused", f);
+      hint.innerHTML = f ? "you have control · <kbd>↑↓</kbd> select · <kbd>ctrl-d</kbd> delete · <kbd>?</kbd> help · click outside to release" : IDLE_HINT();
+    };
     let rows = 0, wantRows = 0, shrinkTimer = 0, retry = 0;
 
     // Terminal text scales with the window but never gets unreadably small.
@@ -508,6 +516,10 @@
       term.loadAddon(fitAddon);
       term.open(wrap);
       term.onData((d) => ws && ws.readyState === 1 && ws.send(new TextEncoder().encode(d)));
+      // Clicking the panel hands the keyboard to k9s; clicking elsewhere releases it.
+      term.textarea.addEventListener("focus", () => setFocused(true));
+      term.textarea.addEventListener("blur", () => setFocused(false));
+      setFocused(false);
       applyRows(MIN_ROWS + 4);
       connect();
     }
@@ -527,8 +539,11 @@
       if (on) start(); else stop();
       scheduleFit();
     }
-    function enable() {
+    function enable(canWrite) {
       available = true;
+      writable = !!canWrite;
+      panel.classList.toggle("interactive", writable);
+      hint.innerHTML = IDLE_HINT();
       btn.hidden = false;
       btn.addEventListener("click", () => toggle());
       let saved = null;
@@ -593,7 +608,7 @@
 
   fetch("api/info").then((r) => r.ok ? r.json() : null).then((info) => {
     if (info && info.temporalUi) $("temporal-ui").href = info.temporalUi;
-    if (info && info.k9s) k9s.enable();
+    if (info && info.k9s) k9s.enable(info.k9sWrite);
   }).catch(() => {});
 
   connect();

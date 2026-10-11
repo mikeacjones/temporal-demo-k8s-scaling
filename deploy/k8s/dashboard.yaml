@@ -1,6 +1,8 @@
 # The booth dashboard runs in the cluster, next to what it shows. Its embedded
 # k9s panel runs inside this pod as this ServiceAccount, so it can only ever
-# see (read-only) the demo namespace - never anything from a laptop kubeconfig.
+# see the demo namespace - never anything from a laptop kubeconfig. It is
+# read-only except for deleting pods, so staff can kill a worker live and show
+# Kubernetes replacing it.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -9,11 +11,18 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: dashboard-readonly
+  name: dashboard
 rules:
   - apiGroups: [""]
     resources: ["pods", "events", "services", "endpoints"]
     verbs: ["get", "list", "watch"]
+  # The one write: kill a pod from the k9s panel (its ReplicaSet replaces it).
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets"]
     verbs: ["get", "list", "watch"]
@@ -30,11 +39,11 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: dashboard-readonly
+  name: dashboard
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: dashboard-readonly
+  name: dashboard
 subjects:
   - kind: ServiceAccount
     name: dashboard
@@ -76,6 +85,9 @@ spec:
               value: demo
             - name: WORK_DIR
               value: /work
+            # Let the k9s panel delete pods (RBAC above allows nothing else).
+            - name: K9S_ALLOW_DELETE
+              value: "true"
           ports:
             - name: http
               containerPort: 8080

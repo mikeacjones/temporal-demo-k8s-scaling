@@ -25,8 +25,10 @@ type Server struct {
 	repoURL   string
 	uiURL     string
 
-	// Terminal, when set, serves an embedded read-only k9s at /api/k9s.
+	// Terminal, when set, serves an embedded k9s at /api/k9s.
 	Terminal *Terminal
+	// TerminalInteractive reports that k9s can delete pods (the UI shows hints).
+	TerminalInteractive bool
 
 	mu      sync.Mutex
 	subs    map[chan []byte]struct{}
@@ -88,6 +90,7 @@ func (s *Server) Handler() http.Handler {
 			"temporalUi": s.uiURL,
 			"repo":       s.repoURL,
 			"k9s":        s.Terminal != nil && s.Terminal.Available(),
+			"k9sWrite":   s.TerminalInteractive,
 		})
 	})
 	if s.Terminal != nil {

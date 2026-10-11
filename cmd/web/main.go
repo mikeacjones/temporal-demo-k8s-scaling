@@ -83,9 +83,11 @@ func main() {
 	switch *k9sCmd {
 	case "":
 	case "auto":
-		if cmd, env, err := inClusterK9s(*k8sNS, *workDir); err == nil {
+		allowDelete := os.Getenv("K9S_ALLOW_DELETE") == "true"
+		if cmd, env, err := inClusterK9s(*k8sNS, *workDir, allowDelete); err == nil {
 			srv.Terminal = &dashboard.Terminal{Command: cmd, Env: env, Logger: logger}
-			logger.Info("k9s panel: in-cluster, using the pod's service account")
+			srv.TerminalInteractive = allowDelete
+			logger.Info("k9s panel: in-cluster, using the pod's service account", "allowDelete", allowDelete)
 		} else {
 			logger.Info("k9s panel disabled: only available when running in the cluster", "reason", err)
 		}

@@ -64,7 +64,10 @@ images: ## Build worker images locally and load them into minikube
 dashboard: ## Rebuild and roll just the dashboard (no worker rollout)
 	docker build --build-arg BIN=web --target web -t dashboard:$(TAG) .
 	minikube -p $(PROFILE) image load dashboard:$(TAG)
-	$(KUBECTL) -n demo set image deploy/dashboard dashboard=dashboard:$(TAG)
+	sed -e 's/dashboard:dev/dashboard:$(TAG)/' \
+	    -e 's/host.minikube.internal:7233/host.minikube.internal:$(TEMPORAL_PORT)/' \
+	    -e 's|http://localhost:8233|http://localhost:$(UI_PORT)|' deploy/k8s/dashboard.yaml \
+		| $(KUBECTL) -n demo apply -f -
 	$(KUBECTL) -n demo rollout status deploy/dashboard --timeout=120s
 
 deploy: ## Apply workloads (a new TAG => new Build ID => progressive rollout)

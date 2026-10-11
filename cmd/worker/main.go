@@ -87,6 +87,7 @@ func main() {
 		VersionLabel: label,
 		Speed:        envFloat("SPEED", 1),
 		FailureRate:  envFloat("FAILURE_RATE", 0.03),
+		Log:          logger,
 	})
 
 	if err := w.Start(); err != nil {

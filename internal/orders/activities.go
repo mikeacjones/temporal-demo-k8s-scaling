@@ -3,6 +3,7 @@ package orders
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
 	"time"
 
@@ -18,6 +19,15 @@ type Activities struct {
 	Speed        float64
 	// FailureRate is the chance of a transient (retryable) failure per call.
 	FailureRate float64
+	// Log gets one readable line per business step, so `k9s` logs show the
+	// work each pod is doing. Nil disables it.
+	Log *slog.Logger
+}
+
+func (a *Activities) logf(msg string, args ...any) {
+	if a.Log != nil {
+		a.Log.Info(msg, args...)
+	}
 }
 
 func (a *Activities) work(ctx context.Context, minMs, maxMs int) error {
@@ -46,7 +56,11 @@ func (a *Activities) ReserveInventory(ctx context.Context, o Order) error {
 }
 
 func (a *Activities) ChargePayment(ctx context.Context, o Order) error {
-	return a.work(ctx, 800, 1600)
+	if err := a.work(ctx, 800, 1600); err != nil {
+		return err
+	}
+	a.logf("payment captured", "order", o.ID, "customer", o.Customer, "amount", fmt.Sprintf("$%.2f", o.Amount))
+	return nil
 }
 
 func (a *Activities) ShipOrder(ctx context.Context, o Order) (string, error) {
@@ -54,9 +68,12 @@ func (a *Activities) ShipOrder(ctx context.Context, o Order) (string, error) {
 		return "", err
 	}
 	if rand.Float64() < 0.02 {
+		a.logf("out of stock; workflow will compensate", "order", o.ID)
 		return "", temporal.NewNonRetryableApplicationError("warehouse out of stock", ErrOutOfStock, nil)
 	}
-	return fmt.Sprintf("ZIG-%06d", rand.IntN(1_000_000)), nil
+	tracking := fmt.Sprintf("ZIG-%06d", rand.IntN(1_000_000))
+	a.logf("order shipped", "order", o.ID, "items", o.Items, "tracking", tracking, "version", a.VersionLabel)
+	return tracking, nil
 }
 
 func (a *Activities) NotifyCustomer(ctx context.Context, o Order) (string, error) {
@@ -64,7 +81,11 @@ func (a *Activities) NotifyCustomer(ctx context.Context, o Order) (string, error
 }
 
 func (a *Activities) RefundPayment(ctx context.Context, o Order) error {
-	return a.work(ctx, 300, 600)
+	if err := a.work(ctx, 300, 600); err != nil {
+		return err
+	}
+	a.logf("payment refunded", "order", o.ID, "amount", fmt.Sprintf("$%.2f", o.Amount))
+	return nil
 }
 
 func (a *Activities) ReleaseInventory(ctx context.Context, o Order) error {

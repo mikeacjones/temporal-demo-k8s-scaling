@@ -1,4 +1,6 @@
-# k9s settings for the booth, used via K9S_CONFIG_DIR. The in-cluster
+# k9s settings for the booth, used via K9S_CONFIG_DIR. readOnly here is the
+# default; the dashboard passes --write when K9S_ALLOW_DELETE is set (RBAC
+# then only permits deleting pods in the demo namespace). The in-cluster
 # dashboard writes this to a scratch dir at startup; scripts/k9s.sh copies it
 # to .run/k9s for local use, so k9s's own state files never land in git. Read-only so nothing
 # can be deleted or exec'd from the booth screen, and compact chrome so the
@@ -10,7 +12,7 @@ k9s:
   noExitOnCtrlC: true
   ui:
     skin: temporal
-    enableMouse: false
+    enableMouse: true   # click a pod row in the browser panel to select it
     headless: true
     logoless: true
     crumbsless: true
