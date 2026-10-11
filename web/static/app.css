@@ -371,7 +371,7 @@ body.kiosk { cursor: none; }
   .hero { display: flex; flex-direction: column-reverse; gap: 8px; }
   .hero-copy { padding: 0; }
   .ziggy-stage { width: 100%; justify-content: flex-start; }
-  .speech { left: 5.6rem; top: -1.2rem; }  /* Ziggy is left-aligned here, not centered */
+  .speech { display: block; left: 6.6rem; top: -.9rem; }  /* Ziggy is left-aligned here, not centered */
   .display { font-size: 2.4rem; }
   .topbar { flex-wrap: wrap; }
   .health { order: 3; width: 100%; justify-content: flex-start; }
