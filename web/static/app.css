@@ -207,11 +207,15 @@ strong { font-weight: 600; color: var(--indigo-100); }
 }
 .ziggy { position: relative; height: 100%; width: auto; max-width: none; transition: filter .6s; }
 @keyframes float { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-.8rem) rotate(2deg); } }
+/* Anchored to Ziggy's head: the image is centered in the stage, 8.5rem tall
+   (~15.6rem wide), with the head near 38% across / 15% down. The tail sits on
+   the bubble's left edge and points down-left at the head. */
 .speech {
-  position: absolute; top: -.2rem; right: 0; z-index: 2; max-width: 14rem;
+  position: absolute; left: calc(50% - .6rem); top: calc(50% - 6.2rem); z-index: 2;
+  width: max-content; max-width: 13rem;
   font-family: var(--font-mono); font-size: .72rem; font-weight: 500; color: var(--space-black);
-  background: var(--off-white); padding: .5rem .7rem 1.1rem;
-  clip-path: polygon(0 0, 100% 0, 100% 80%, 26% 80%, 14% 100%, 16% 80%, 0 80%);
+  background: var(--off-white); padding: .5rem .7rem .5rem 2rem;
+  clip-path: polygon(1.3rem 0, 100% 0, 100% 100%, 1.3rem 100%, 1.3rem 80%, 0 100%, 1.3rem 52%);
 }
 .speedlines { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .5s; }
 .speedlines i { position: absolute; right: 88%; height: 3px; border-radius: 2px; background: linear-gradient(to left, var(--green), transparent); animation: zoom .9s linear infinite; }
@@ -367,6 +371,7 @@ body.kiosk { cursor: none; }
   .hero { display: flex; flex-direction: column-reverse; gap: 8px; }
   .hero-copy { padding: 0; }
   .ziggy-stage { width: 100%; justify-content: flex-start; }
+  .speech { left: 5.6rem; top: -1.2rem; }  /* Ziggy is left-aligned here, not centered */
   .display { font-size: 2.4rem; }
   .topbar { flex-wrap: wrap; }
   .health { order: 3; width: 100%; justify-content: flex-start; }
