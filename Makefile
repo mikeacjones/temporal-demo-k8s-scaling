@@ -9,7 +9,10 @@ PROFILE        ?= temporal-demo
 CPUS           ?= 6
 MEMORY         ?= 6g
 TEMPORAL_PORT  ?= 7233
-TAG            ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)$(shell git diff --quiet 2>/dev/null || echo -$$(date +%s))
+# Evaluated once per make run (:=) so images and manifests share one tag.
+ifndef TAG
+TAG := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)$(shell git diff --quiet 2>/dev/null || echo -$$(date +%s))
+endif
 KUBECTL        := kubectl --context $(PROFILE)
 HELM           := helm --kube-context $(PROFILE)
 
@@ -49,10 +52,11 @@ platform: ## cert-manager, Worker Controller, KEDA, Prometheus
 	$(HELM) upgrade --install temporal-worker-controller oci://docker.io/temporalio/temporal-worker-controller \
 		-n temporal-system --version $(CONTROLLER_CHART_VERSION) -f deploy/helm/worker-controller-values.yaml --wait
 
-images: ## Build worker images straight into minikube's Docker daemon
-	eval $$(minikube -p $(PROFILE) docker-env) && \
-		docker build --build-arg BIN=worker -t order-worker:$(TAG) . && \
-		docker build --build-arg BIN=director -t traffic-director:$(TAG) .
+images: ## Build worker images locally and load them into minikube
+	docker build --build-arg BIN=worker -t order-worker:$(TAG) .
+	docker build --build-arg BIN=director -t traffic-director:$(TAG) .
+	minikube -p $(PROFILE) image load order-worker:$(TAG)
+	minikube -p $(PROFILE) image load traffic-director:$(TAG)
 
 deploy: ## Apply workloads (a new TAG => new Build ID => progressive rollout)
 	$(KUBECTL) kustomize deploy/k8s \

@@ -189,8 +189,15 @@ main { padding: 0 var(--gutter); display: grid; gap: 20px; max-width: 1760px; ma
 }
 .hero-copy .eyebrow { margin-bottom: 18px; }
 .ziggy-stage { position: relative; display: grid; place-items: center; min-height: 260px; }
-.ziggy-orbit { position: relative; width: min(100%, 440px); animation: float 6s ease-in-out infinite; }
-.ziggy { width: 100%; height: auto; filter: drop-shadow(0 20px 40px rgba(68, 76, 231, .45)); transition: filter .6s; }
+/* The official illustration ships on a black background; "lighten" lets the
+   page show through the black while keeping Ziggy's colors. */
+.ziggy-orbit { position: relative; width: min(100%, 440px); animation: float 6s ease-in-out infinite; mix-blend-mode: lighten; }
+.ziggy-orbit::before {
+  content: ""; position: absolute; inset: 10% 15%; border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow, rgba(68, 76, 231, .45)), transparent);
+  filter: blur(30px); transition: background .6s;
+}
+.ziggy { position: relative; width: 100%; height: auto; transition: filter .6s; }
 @keyframes float {
   0%, 100% { transform: translateY(0) rotate(-3deg); }
   50% { transform: translateY(-18px) rotate(2deg); }
@@ -220,10 +227,10 @@ main { padding: 0 var(--gutter); display: grid; gap: 20px; max-width: 1760px; ma
 .ziggy-stage[data-phase="peak"] .ziggy-orbit { animation: float 1.6s ease-in-out infinite, wobble .35s ease-in-out infinite; }
 .ziggy-stage[data-phase="peak"] .speedlines,
 .ziggy-stage[data-phase="ramp-up"] .speedlines { opacity: 1; }
-.ziggy-stage[data-phase="peak"] .ziggy { filter: drop-shadow(0 0 40px rgba(31, 241, 165, .55)); }
+.ziggy-stage[data-phase="peak"] .ziggy-orbit { --glow: rgba(31, 241, 165, .5); }
 .ziggy-stage[data-phase="paused"] .ziggy-orbit { animation-play-state: paused; }
-.ziggy-stage[data-phase="paused"] .ziggy { filter: grayscale(.6) drop-shadow(0 20px 40px rgba(0,0,0,.4)); }
-.ziggy-stage[data-rollout="true"] .ziggy { filter: drop-shadow(0 0 50px rgba(255, 107, 255, .7)); }
+.ziggy-stage[data-phase="paused"] .ziggy { filter: grayscale(.7); }
+.ziggy-stage[data-rollout="true"] .ziggy-orbit { --glow: rgba(255, 107, 255, .6); }
 @keyframes wobble { 0%, 100% { rotate: -1.5deg; } 50% { rotate: 1.5deg; } }
 
 /* ---------- Cycle timeline ---------- */
@@ -282,7 +289,6 @@ main { padding: 0 var(--gutter); display: grid; gap: 20px; max-width: 1760px; ma
   border: 1px solid var(--border); padding: 14px 16px; display: grid; gap: 10px;
   background: linear-gradient(90deg, color-mix(in srgb, var(--vc) 10%, transparent), transparent 60%);
   border-left: 3px solid var(--vc);
-  animation: enter .5s ease;
 }
 .version-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .version-name { font-size: 22px; font-weight: 400; text-transform: capitalize; display: flex; align-items: center; gap: 10px; }
@@ -319,8 +325,8 @@ main { padding: 0 var(--gutter); display: grid; gap: 20px; max-width: 1760px; ma
 .pod.leaving { opacity: .15; transform: scale(.85); filter: grayscale(1); }
 .pod.busy { box-shadow: 0 0 18px color-mix(in srgb, var(--vc) 45%, transparent); }
 .pod-name { font-family: var(--font-mono); font-size: 11px; color: var(--slate-300); }
-.pips { display: grid; grid-template-columns: repeat(2, 14px); gap: 5px; }
-.pip { width: 14px; height: 14px; border: 1px solid color-mix(in srgb, var(--vc) 60%, transparent); transition: background .25s, box-shadow .25s; }
+.pips { display: grid; grid-template-columns: repeat(2, 18px); gap: 6px; }
+.pip { width: 18px; height: 18px; border: 1px solid color-mix(in srgb, var(--vc) 60%, transparent); transition: background .25s, box-shadow .25s; }
 .pip.on { background: var(--vc); box-shadow: 0 0 8px var(--vc); }
 .pod.director { --vc: var(--purple); width: 120px; }
 .pod.director .pod-name { color: var(--indigo-100); }
@@ -354,6 +360,7 @@ main { padding: 0 var(--gutter); display: grid; gap: 20px; max-width: 1760px; ma
   position: fixed; right: 16px; bottom: 16px; z-index: 20;
   display: grid; gap: 10px; padding: 14px 16px; max-width: calc(100vw - 32px);
 }
+.controls[hidden] { display: none; }
 .controls-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 40px); opacity: 0; z-index: 30;

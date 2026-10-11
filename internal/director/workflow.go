@@ -3,6 +3,7 @@ package director
 import (
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"go.temporal.io/sdk/temporal"
@@ -83,10 +84,15 @@ func (s *State) rolloutDueThisCycle() bool {
 	return n > 0 && s.Cycle > 0 && s.Cycle%n == 0
 }
 
+// nextRolloutIn is how many cycles until the next automatic rollout; 0 means
+// one happened at the start of the current cycle.
 func (s *State) nextRolloutIn() int {
 	n := s.Config.RolloutEveryNCycles
 	if n <= 0 {
 		return -1
+	}
+	if s.Cycle == 0 {
+		return n
 	}
 	return (n - s.Cycle%n) % n
 }
@@ -100,7 +106,12 @@ func TrafficDirectorWorkflow(ctx workflow.Context, state State) error {
 		state.Config = DefaultConfig()
 	}
 	if state.IDPrefix == "" {
-		state.IDPrefix = workflow.GetInfo(ctx).FirstRunID[:8]
+		// Unique per entity lifetime so order IDs never collide with a previous
+		// director's orders (e.g. after the workflow is terminated and restarted).
+		state.IDPrefix = strings.ReplaceAll(workflow.GetInfo(ctx).FirstRunID, "-", "")
+		if len(state.IDPrefix) > 8 {
+			state.IDPrefix = state.IDPrefix[:8]
+		}
 	}
 	rollingOut := false
 

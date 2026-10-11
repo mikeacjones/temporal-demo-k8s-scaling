@@ -64,8 +64,9 @@
         if (s.x < -10) Object.assign(s, newStar(false));
         const a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(s.tw)) * (0.4 + s.z * 0.6);
         ctx.fillStyle = `rgba(${s.hue},${a.toFixed(3)})`;
-        if (load > 0.35 && s.z > 0.6 && !reduceMotion) {
-          const len = (load - 0.3) * 40 * s.z;
+        if (load > 0.5 && s.z > 0.75 && !reduceMotion) {
+          const len = Math.min(14, (load - 0.45) * 26 * s.z);
+          ctx.fillStyle = `rgba(${s.hue},${(a * 0.55).toFixed(3)})`;
           ctx.fillRect(s.x, s.y - s.r / 2, len, s.r);
         } else {
           ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
@@ -135,9 +136,9 @@
         ctx.strokeStyle = "rgba(97,105,237,.16)"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + cw, y); ctx.stroke();
         ctx.fillStyle = "#1ff1a5"; ctx.textAlign = "right";
-        ctx.fillText(fmt(maxRate * (1 - i / 4)), padL - 8, y);
+        ctx.fillText(axis(maxRate * (1 - i / 4)), padL - 8, y);
         ctx.fillStyle = "#7f86f1"; ctx.textAlign = "left";
-        ctx.fillText(fmt(maxPods * (1 - i / 4)), padL + cw + 8, y);
+        ctx.fillText(axis(maxPods * (1 - i / 4)), padL + cw + 8, y);
       }
       ctx.fillStyle = "#92a4c3"; ctx.textAlign = "center"; ctx.textBaseline = "top";
       for (let m = 10; m >= 0; m -= 2) ctx.fillText(m ? `-${m}m` : "now", X(now - m * 60000), padT + ch + 8);
@@ -186,6 +187,7 @@
     if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "k";
     return Number(n).toFixed(digits);
   }
+  const axis = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
   const short = (s, n = 10) => (s && s.length > n ? s.slice(-n) : s || "");
 
   let speechPhase = "";
@@ -243,7 +245,7 @@
     $("timeline-marker").style.left = `${Math.min(1, d.cycleProgress) * (totalW - gaps) + gapOffset(d) }px`;
 
     const next = d.nextRolloutInCycles;
-    const rolloutTxt = next < 0 ? "auto-rollout off" : next === 0 ? "rollout this cycle" : `next rollout in ${next} cycle${next > 1 ? "s" : ""}`;
+    const rolloutTxt = next < 0 ? "auto-rollout off" : next === 0 ? "new version rolled out this cycle" : `next rollout in ${next} cycle${next > 1 ? "s" : ""}`;
     const surge = d.surge && d.surge.remainingSeconds > 0 ? ` · ⚡ surge ${Math.round(d.surge.remainingSeconds)}s` : "";
     $("cycle-meta").textContent = `cycle #${d.cycle + 1} · ${fmt(d.totalStarted)} orders started · ${rolloutTxt}${surge}`;
   }
