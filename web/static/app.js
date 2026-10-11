@@ -7,7 +7,7 @@
   const $ = (id) => document.getElementById(id);
   const VERSION_COLORS = {
     aurora: "#1ff1a5", nebula: "#ff6bff", quasar: "#7f86f1", pulsar: "#fecb2f",
-    comet: "#59fda0", nova: "#ff5555", zenith: "#c3ff62", stardust: "#b664ff",
+    comet: "#59fda0", nova: "#4fd8ff", zenith: "#c3ff62", stardust: "#b664ff",
   };
   const colorFor = (label) => VERSION_COLORS[label] || "#a5a9f5";
   const PHASE_TEXT = {
