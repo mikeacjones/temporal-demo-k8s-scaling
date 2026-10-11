@@ -1,4 +1,12 @@
 # Temporal Worker Controller values for the booth demo.
+
+# Pinned build of the controller's main branch (2026-10-10). The v1.12.0
+# release can't substitute per-version tokens ({{temporal_worker_build_id}})
+# inside KEDA ScaledObjects (temporalio/temporal-worker-controller#616 landed
+# after it), which made every version scale on the whole deployment's slot
+# utilization. Switch back to a release tag once one includes #616.
+image:
+  tag: "main@sha256:0cdd03f25ff1271f0f2a487174eb37ec7ba202bed79260e8932ef2a3baeb5ac2"
 workerResourceTemplate:
   # Allow WorkerResourceTemplates to render KEDA ScaledObjects (per worker
   # version) in addition to plain HPAs. This also grants the controller RBAC.
