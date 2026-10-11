@@ -116,7 +116,10 @@
     }
     function draw() {
       ctx.clearRect(0, 0, w, h);
-      const padL = 40, padR = 34, padT = 10, padB = 24;
+      // Scale text, padding, and strokes with the page's fluid root size.
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const k = rem / 16;
+      const padL = 3 * rem, padR = 2.6 * rem, padT = 0.7 * rem, padB = 1.7 * rem;
       const cw = w - padL - padR, ch = h - padT - padB;
       if (cw <= 0 || ch <= 0) return;
       const now = history.length ? history[history.length - 1].t : Date.now();
@@ -129,19 +132,19 @@
       const Y = (v, max) => padT + ch - (v / max) * ch;
 
       // grid + axes
-      ctx.font = '11px "Noto Sans Mono", monospace';
+      ctx.font = `${Math.round(0.72 * rem)}px "Noto Sans Mono", monospace`;
       ctx.textBaseline = "middle";
       for (let i = 0; i <= 4; i++) {
         const y = padT + (ch * i) / 4;
         ctx.strokeStyle = "rgba(97,105,237,.16)"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + cw, y); ctx.stroke();
         ctx.fillStyle = "#1ff1a5"; ctx.textAlign = "right";
-        ctx.fillText(axis(maxRate * (1 - i / 4)), padL - 8, y);
+        ctx.fillText(axis(maxRate * (1 - i / 4)), padL - 0.5 * rem, y);
         ctx.fillStyle = "#7f86f1"; ctx.textAlign = "left";
-        ctx.fillText(axis(maxPods * (1 - i / 4)), padL + cw + 8, y);
+        ctx.fillText(axis(maxPods * (1 - i / 4)), padL + cw + 0.5 * rem, y);
       }
       ctx.fillStyle = "#92a4c3"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-      for (let m = 10; m >= 0; m -= 2) ctx.fillText(m ? `-${m}m` : "now", X(now - m * 60000), padT + ch + 8);
+      for (let m = 10; m >= 0; m -= 2) ctx.fillText(m ? `-${m}m` : "now", X(now - m * 60000), padT + ch + 0.5 * rem);
       if (pts.length < 2) return;
 
       // backlog: filled area on its own scale
@@ -151,7 +154,7 @@
       const g = ctx.createLinearGradient(0, padT, 0, padT + ch);
       g.addColorStop(0, "rgba(255,107,255,.35)"); g.addColorStop(1, "rgba(255,107,255,0)");
       ctx.fillStyle = g; ctx.fill();
-      line(pts, (p) => Y(p.backlog / maxBacklog, 1), "rgba(255,107,255,.8)", 1.5);
+      line(pts, (p) => Y(p.backlog / maxBacklog, 1), "rgba(255,107,255,.8)", 1.5 * k);
 
       // pods: stepped line
       ctx.beginPath();
@@ -159,14 +162,14 @@
         const x = X(p.t), y = Y(p.pods, maxPods);
         if (i === 0) ctx.moveTo(x, y); else { ctx.lineTo(x, Y(pts[i - 1].pods, maxPods)); ctx.lineTo(x, y); }
       });
-      ctx.strokeStyle = "#7f86f1"; ctx.lineWidth = 3; ctx.shadowColor = "#444ce7"; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.strokeStyle = "#7f86f1"; ctx.lineWidth = 3 * k; ctx.shadowColor = "#444ce7"; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
 
       // target rate
-      line(pts, (p) => Y(p.rate, maxRate), "#1ff1a5", 2.5, true);
+      line(pts, (p) => Y(p.rate, maxRate), "#1ff1a5", 2.5 * k, true);
 
       // live dot
       const lp = pts[pts.length - 1];
-      ctx.fillStyle = "#1ff1a5"; ctx.beginPath(); ctx.arc(X(lp.t), Y(lp.rate, maxRate), 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1ff1a5"; ctx.beginPath(); ctx.arc(X(lp.t), Y(lp.rate, maxRate), 4 * k, 0, Math.PI * 2); ctx.fill();
 
       function line(points, yf, color, width, glow) {
         ctx.beginPath();
@@ -176,8 +179,8 @@
         ctx.stroke(); ctx.shadowBlur = 0;
       }
     }
-    addEventListener("resize", resize);
-    requestAnimationFrame(resize);
+    // The panel resizes with the grid (and the fitter), not just the window.
+    new ResizeObserver(resize).observe(canvas.parentElement);
     return { draw };
   })();
 
@@ -187,7 +190,7 @@
     if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "k";
     return Number(n).toFixed(digits);
   }
-  const axis = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+  const axis = (v) => (Number.isInteger(v) ? String(v) : String(+v.toFixed(2)));
   const short = (s, n = 10) => (s && s.length > n ? s.slice(-n) : s || "");
 
   let speechPhase = "";
@@ -217,7 +220,7 @@
     $("ziggy-stage").dataset.phase = phase;
     $("ziggy-stage").dataset.rollout = String(!!(snap.versions || []).find((v) => v.status === "ramping"));
     setSpeech(phase);
-    if (!d) { $("cycle-meta").textContent = "waiting for traffic director…"; return; }
+    if (!d) { $("cycle-meta").textContent = "waiting for traffic…"; return; }
 
     const key = d.phases.map((p) => p.name + p.seconds).join("|");
     const tl = $("timeline");
@@ -240,20 +243,19 @@
       seg.querySelector(".fill").style.width = elapsed >= start && elapsed < end ? `${((elapsed - start) / secs) * 100}%` : "";
       start = end;
     });
-    const segs = [...tl.querySelectorAll(".seg")];
-    const totalW = tl.clientWidth, gaps = (segs.length - 1) * 3;
-    $("timeline-marker").style.left = `${Math.min(1, d.cycleProgress) * (totalW - gaps) + gapOffset(d) }px`;
+    // Position the marker inside the active segment using its real geometry.
+    let pos = 0, acc = 0;
+    tl.querySelectorAll(".seg").forEach((seg, i) => {
+      const secs = d.phases[i].seconds;
+      if (elapsed >= acc && elapsed < acc + secs) pos = seg.offsetLeft + ((elapsed - acc) / secs) * seg.offsetWidth;
+      acc += secs;
+    });
+    $("timeline-marker").style.transform = `translateX(${pos}px)`;
 
     const next = d.nextRolloutInCycles;
     const rolloutTxt = next < 0 ? "auto-rollout off" : next === 0 ? "new version rolled out this cycle" : `next rollout in ${next} cycle${next > 1 ? "s" : ""}`;
     const surge = d.surge && d.surge.remainingSeconds > 0 ? ` · ⚡ surge ${Math.round(d.surge.remainingSeconds)}s` : "";
     $("cycle-meta").textContent = `cycle #${d.cycle + 1} · ${fmt(d.totalStarted)} orders started · ${rolloutTxt}${surge}`;
-  }
-  function gapOffset(d) {
-    // Account for the 3px gaps between segments the marker has passed.
-    let start = 0, n = 0;
-    for (const p of d.phases) { start += p.seconds; if (d.elapsed >= start) n++; }
-    return Math.min(n, d.phases.length - 1) * 3;
   }
 
   function renderKPIs(s) {
@@ -262,7 +264,7 @@
     const ready = alive.filter((p) => p.ready).length;
     const desired = (s.versions || []).reduce((a, v) => a + (v.desired || 0), 0);
     $("kpi-rate").textContent = fmt(d ? d.targetRate : 0, 1);
-    $("kpi-rate-sub").textContent = s.queue.dispatchRate ? `${fmt(s.queue.dispatchRate, 1)} activity tasks/s dispatched` : "target from director";
+    $("kpi-rate-sub").textContent = s.queue.dispatchRate ? `${fmt(s.queue.dispatchRate, 1)} activity tasks/s dispatched` : "incoming traffic";
     $("kpi-backlog").textContent = fmt(s.queue.backlog);
     $("kpi-backlog-sub").textContent = s.queue.backlogAgeSec > 0.5 ? `oldest waiting ${s.queue.backlogAgeSec.toFixed(1)}s` : "waiting in queue";
     $("kpi-running").textContent = fmt(s.runningOrders);
@@ -293,8 +295,8 @@
           <span>backlog <b>${fmt(v.backlog)}</b></span>
           <span>slots <b>${fmt(v.slotsUsed)}/${fmt(v.slotsTotal)}</b></span>
           <span>new traffic <b>${Math.round(pct)}%</b></span>
+          <span class="build-id">build ${esc(v.buildId)}</span>
         </div>
-        <div class="build-id">build ${esc(v.buildId)}</div>
       </div>`;
     }).join("");
     const last = s.director && s.director.lastRollout;
@@ -303,6 +305,7 @@
 
   // Pod constellation: keyed DOM so pods animate in and out.
   const podEls = new Map();
+  let podCount = -1;
   function renderPods(s) {
     const root = $("constellation");
     const groups = new Map();
@@ -313,10 +316,8 @@
     }
     const seen = new Set();
     const wantGroups = [];
-    if (s.directorPod) wantGroups.push({ id: "__director", label: "traffic director", director: true, pods: [s.directorPod] });
     for (const [id, g] of groups) if (g.pods.length) wantGroups.push({ id, ...g });
 
-    // Groups
     const existing = new Map([...root.children].map((c) => [c.dataset.id, c]));
     wantGroups.forEach((g, idx) => {
       let ge = existing.get(g.id);
@@ -326,36 +327,30 @@
         ge.innerHTML = `<div class="pod-group-label"></div><div class="pod-row"></div>`;
       }
       if (root.children[idx] !== ge) root.insertBefore(ge, root.children[idx] || null);
-      ge.style.setProperty("--vc", g.director ? "#b664ff" : colorFor(g.label));
-      ge.querySelector(".pod-group-label").textContent = g.director ? "traffic director · 1 pod, never scaled"
-        : `${g.label} · ${g.pods.filter((p) => !p.terminating).length} pod${g.pods.length === 1 ? "" : "s"}${g.status ? " · " + g.status : ""}`;
+      ge.style.setProperty("--vc", colorFor(g.label));
+      const alive = g.pods.filter((p) => !p.terminating).length;
+      ge.querySelector(".pod-group-label").textContent = `${g.label} · ${alive} pod${alive === 1 ? "" : "s"}${g.status ? " · " + g.status : ""}`;
       const row = ge.querySelector(".pod-row");
       for (const p of g.pods) {
         seen.add(p.name);
         let pe = podEls.get(p.name);
         if (!pe) {
           pe = document.createElement("div");
-          pe.className = "pod enter" + (g.director ? " director" : "");
-          pe.innerHTML = g.director ? `<div class="pod-name"></div><div class="pod-name">entity workflow</div>`
-            : `<div class="pips">${"<i class='pip'></i>".repeat(4)}</div><div class="pod-name"></div>`;
+          pe.className = "pod enter";
+          pe.innerHTML = `<div class="pips">${"<i class='pip'></i>".repeat(4)}</div><div class="pod-name"></div>`;
           podEls.set(p.name, pe);
           setTimeout(() => pe.classList.remove("enter"), 800);
         }
         if (pe.parentElement !== row) row.appendChild(pe);
-        pe.style.setProperty("--vc", g.director ? "#b664ff" : colorFor(p.label));
-        pe.querySelector(".pod-name").textContent = short(p.name, g.director ? 14 : 5);
+        pe.style.setProperty("--vc", colorFor(p.label));
+        pe.querySelector(".pod-name").textContent = short(p.name, 5);
         pe.classList.toggle("pending", !p.ready && !p.terminating);
         pe.classList.toggle("leaving", p.terminating);
         pe.title = `${p.name}\n${p.phase}${p.ready ? " · ready" : ""}${p.terminating ? " · terminating" : ""}`;
-        if (!g.director) {
-          const total = Math.max(4, Math.round(p.slotsTotal || 4));
-          const pips = pe.querySelectorAll(".pip");
-          if (pips.length !== total) {
-            pe.querySelector(".pips").innerHTML = "<i class='pip'></i>".repeat(total);
-          }
-          pe.querySelectorAll(".pip").forEach((pip, i) => pip.classList.toggle("on", i < Math.round(p.slotsUsed)));
-          pe.classList.toggle("busy", p.slotsUsed >= (p.slotsTotal || 4) && p.slotsTotal > 0);
-        }
+        const total = Math.max(4, Math.round(p.slotsTotal || 4));
+        if (pe.querySelectorAll(".pip").length !== total) pe.querySelector(".pips").innerHTML = "<i class='pip'></i>".repeat(total);
+        pe.querySelectorAll(".pip").forEach((pip, i) => pip.classList.toggle("on", i < Math.round(p.slotsUsed)));
+        pe.classList.toggle("busy", p.slotsTotal > 0 && p.slotsUsed >= p.slotsTotal);
       }
     });
     // Remove vanished pods (fade) and empty groups.
@@ -368,11 +363,57 @@
     }
     const wantIds = new Set(wantGroups.map((g) => g.id));
     for (const ge of [...root.children]) {
-      if (!wantIds.has(ge.dataset.id)) setTimeout(() => { if (!ge.querySelector(".pod:not(.leaving)")) ge.remove(); }, 700);
+      if (ge.dataset.id && !wantIds.has(ge.dataset.id)) setTimeout(() => { if (!ge.querySelector(".pod:not(.leaving)")) ge.remove(); }, 700);
     }
     if (!wantGroups.length && !root.querySelector(".empty")) root.innerHTML = `<div class="empty">No pods yet. Is the cluster up?</div>`;
     else if (wantGroups.length) root.querySelector(".empty")?.remove();
+
+    const n = seen.size + wantGroups.length * 100;
+    if (n !== podCount) { podCount = n; requestAnimationFrame(fitPods); }
   }
+
+  // ---------------------------------------------------------- fit to screen
+  // CSS scales everything with the window; this handles what's left: if the
+  // grid still overflows (short or odd-shaped windows), hide secondary text in
+  // steps, then shrink the root size. Pod tiles are sized separately so any
+  // number of pods fills (but never overflows) its panel.
+  const isPhone = () => matchMedia("(max-width: 600px)").matches;
+  function overflowing(el) { return el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1; }
+  function fit() {
+    const app = $("app"), rootEl = document.documentElement, body = document.body;
+    const rem = () => parseFloat(getComputedStyle(rootEl).fontSize);
+    // "Doesn't fit" also covers a chart squeezed too short to read.
+    const cramped = () => overflowing(app) || $("chart").parentElement.clientHeight < 12 * rem() || overflowing($("versions"));
+    body.classList.remove("fit-1", "fit-2", "fit-3");
+    rootEl.style.setProperty("--fit", "1");
+    if (!isPhone()) {
+      for (const lvl of [1, 2, 3]) {
+        if (!cramped()) break;
+        body.classList.add(`fit-${lvl}`);
+      }
+      let f = 1;
+      while (overflowing(app) && f > 0.6) {
+        f -= 0.04;
+        rootEl.style.setProperty("--fit", f.toFixed(2));
+      }
+    }
+    fitPods();
+  }
+  function fitPods() {
+    const c = $("constellation");
+    if (isPhone()) { c.style.setProperty("--pod-scale", "1"); return; }
+    let scale = 2.2;
+    c.style.setProperty("--pod-scale", String(scale));
+    while (overflowing(c) && scale > 0.45) {
+      scale *= 0.92;
+      c.style.setProperty("--pod-scale", scale.toFixed(3));
+    }
+  }
+  let fitTimer = 0;
+  const scheduleFit = () => { clearTimeout(fitTimer); fitTimer = setTimeout(fit, 120); };
+  addEventListener("resize", scheduleFit);
+  document.fonts?.ready.then(scheduleFit);
+  let versionCount = -1;
 
   function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -385,6 +426,8 @@
     renderKPIs(snap);
     renderVersions(snap);
     renderPods(snap);
+    const vc = (snap.versions || []).length;
+    if (vc !== versionCount) { versionCount = vc; scheduleFit(); }
     const d = snap.director;
     const peak = d && d.config ? Math.max(d.config.peakRate, 1) : 10;
     load = d ? Math.min(1, (d.targetRate || 0) / peak) : 0;

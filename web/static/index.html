@@ -18,28 +18,29 @@
     <div class="blur-pink"></div><div class="blur-yellow"></div><div class="blur-green"></div>
   </div>
 
-  <header class="topbar">
-    <a class="brand" href="https://temporal.io" target="_blank" rel="noopener">
-      <img src="img/temporal-logo.svg" alt="Temporal" width="172" height="44">
-    </a>
-    <div class="health" id="health" aria-label="System health">
-      <span class="dot" data-k="temporal">Temporal</span>
-      <span class="dot" data-k="director">Director</span>
-      <span class="dot" data-k="kubernetes">Kubernetes</span>
-      <span class="dot" data-k="prometheus">Metrics</span>
-    </div>
-    <a class="button secondary ultraviolet small" id="temporal-ui" href="http://localhost:8233" target="_blank" rel="noopener">Temporal UI ↗</a>
-  </header>
+  <!-- One screen, no scrolling: every panel lives in this grid and the chart
+       and pod panels absorb whatever space the window gives us. -->
+  <div class="app" id="app">
+    <header class="topbar">
+      <a class="brand" href="https://temporal.io" target="_blank" rel="noopener">
+        <img src="img/temporal-logo.svg" alt="Temporal" width="172" height="44">
+      </a>
+      <div class="health" id="health" aria-label="System health">
+        <span class="dot" data-k="temporal">Temporal</span>
+        <span class="dot" data-k="kubernetes">Kubernetes</span>
+        <span class="dot" data-k="prometheus">Metrics</span>
+      </div>
+      <a class="button secondary ultraviolet small" id="temporal-ui" href="http://localhost:8233" target="_blank" rel="noopener">Temporal UI ↗</a>
+    </header>
 
-  <main>
     <section class="hero">
       <div class="hero-copy">
         <p class="eyebrow">Temporal Worker Controller · KEDA · Worker Versioning</p>
         <h1 class="display">Workers that <span class="text-gradient-ultraviolet">scale themselves.</span></h1>
         <p class="lede">
-          A <strong>traffic director</strong> workflow sends waves of orders. KEDA watches each worker version's
-          <strong>task queue backlog</strong> and <strong>slot utilization</strong>, and the Worker Controller
-          runs every version side by side, ramping new ones in while old ones drain.
+          Waves of orders hit a Temporal task queue. KEDA watches each worker version's
+          <strong>task queue backlog</strong> and <strong>slot utilization</strong>, while the Worker Controller
+          ramps new versions in as old ones drain.
         </p>
       </div>
       <div class="ziggy-stage" id="ziggy-stage" data-phase="idle">
@@ -68,7 +69,7 @@
       <div class="card kpi">
         <span class="kpi-label">Orders / sec</span>
         <span class="kpi-value text-gradient-green" id="kpi-rate">0</span>
-        <span class="kpi-sub" id="kpi-rate-sub">target from director</span>
+        <span class="kpi-sub" id="kpi-rate-sub">incoming traffic</span>
       </div>
       <div class="card kpi">
         <span class="kpi-label">Task backlog</span>
@@ -76,9 +77,9 @@
         <span class="kpi-sub" id="kpi-backlog-sub">waiting in queue</span>
       </div>
       <div class="card kpi">
-        <span class="kpi-label">Orders in flight</span>
+        <span class="kpi-label">In flight</span>
         <span class="kpi-value" id="kpi-running">0</span>
-        <span class="kpi-sub" id="kpi-running-sub">running workflows</span>
+        <span class="kpi-sub" id="kpi-running-sub">running orders</span>
       </div>
       <div class="card kpi">
         <span class="kpi-label">Worker pods</span>
@@ -92,70 +93,50 @@
       </div>
     </section>
 
-    <section class="main-grid">
-      <div class="card chart-card">
-        <div class="card-head">
-          <h2 class="heading">Traffic vs. capacity</h2>
-          <div class="legend mono">
-            <span class="lg lg-rate">orders/s</span>
-            <span class="lg lg-backlog">backlog</span>
-            <span class="lg lg-pods">pods</span>
-          </div>
+    <section class="card chart-card">
+      <div class="card-head">
+        <h2 class="heading">Traffic vs. capacity</h2>
+        <div class="legend mono">
+          <span class="lg lg-rate">orders/s</span>
+          <span class="lg lg-backlog">backlog</span>
+          <span class="lg lg-pods">pods</span>
         </div>
-        <div class="chart-wrap"><canvas id="chart"></canvas></div>
       </div>
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    </section>
 
-      <div class="card versions-card">
-        <div class="card-head">
-          <h2 class="heading">Worker versions</h2>
-          <span class="mono muted" id="rollout-note"></span>
-        </div>
-        <div id="versions" class="versions"></div>
+    <section class="card versions-card">
+      <div class="card-head">
+        <h2 class="heading">Worker versions</h2>
+        <span class="mono muted" id="rollout-note"></span>
       </div>
+      <div id="versions" class="versions"></div>
     </section>
 
     <section class="card constellation-card">
       <div class="card-head">
         <h2 class="heading">Pod constellation</h2>
-        <span class="mono muted">each pip is one activity slot (4 per pod)</span>
+        <span class="mono muted hint">each pip is one activity slot</span>
       </div>
       <div id="constellation" class="constellation"></div>
     </section>
 
-    <section class="how" aria-label="How it works">
-      <div class="how-step">
-        <span class="how-num mono">01</span>
-        <h3>Traffic director</h3>
-        <p>An entity workflow on its own worker. It loops forever through idle → ramp → peak → ramp → cooldown, continuing-as-new every cycle.</p>
+    <footer class="footer">
+      <ol class="how" aria-label="How it works">
+        <li><span class="how-num mono">01</span><b>Waves of orders</b><span class="how-text">Traffic cycles idle → peak → cooldown every ~5 minutes, forever.</span></li>
+        <li><span class="how-num mono">02</span><b>Task queue</b><span class="how-text">Pods get only 4 activity slots, so extra orders wait as backlog.</span></li>
+        <li><span class="how-num mono">03</span><b>KEDA per version</b><span class="how-text">One ScaledObject per Build ID scales on backlog and slot use.</span></li>
+        <li><span class="how-num mono">04</span><b>Worker Controller</b><span class="how-text">New versions ramp 25 → 50 → 100% while old ones drain.</span></li>
+      </ol>
+      <div class="repo">
+        <div class="repo-text">
+          <span class="mono muted">Run it yourself</span>
+          <span class="mono repo-url">github.com/mikeacjones/<wbr>temporal-k8s-scaling-demo</span>
+        </div>
+        <img class="qr" src="qr.png" alt="QR code linking to the demo repository" width="120" height="120">
       </div>
-      <div class="how-step">
-        <span class="how-num mono">02</span>
-        <h3>Temporal task queue</h3>
-        <p>Each order is a pinned workflow. Workers only get 4 activity slots, so traffic beyond that waits in the queue as backlog.</p>
-      </div>
-      <div class="how-step">
-        <span class="how-num mono">03</span>
-        <h3>KEDA, per version</h3>
-        <p>The Worker Controller renders one ScaledObject per Build ID that scales on that version's backlog and slot utilization.</p>
-      </div>
-      <div class="how-step">
-        <span class="how-num mono">04</span>
-        <h3>Worker Controller</h3>
-        <p>Every few cycles a new version rolls out progressively (25% → 50% → 100%) while in-flight orders drain on the old one.</p>
-      </div>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <div class="footer-left">
-      <img class="ziggy-face" src="img/ziggy-face.png" alt="" width="400" height="427">
-      <div>
-        <p class="heading">Run this demo yourself</p>
-        <p class="mono muted">github.com/mikeacjones/temporal-k8s-scaling-demo</p>
-      </div>
-    </div>
-    <img class="qr" src="qr.png" alt="QR code linking to the demo repository" width="120" height="120">
-  </footer>
+    </footer>
+  </div>
 
   <div class="controls card glass" id="controls" hidden>
     <span class="eyebrow">Staff controls</span>
@@ -164,7 +145,6 @@
       <button class="button secondary ultraviolet small" data-action="pause" id="btn-pause">Pause</button>
       <button class="button secondary green small" data-action="rollout">Roll out version</button>
     </div>
-    <span class="mono muted" id="controls-status"></span>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
