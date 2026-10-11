@@ -23,6 +23,81 @@ A demo of Temporal workers scaling on Kubernetes.
 | `WorkerResourceTemplate` | Renders a KEDA `ScaledObject` per Build ID with two triggers: `temporal` (that version's backlog; the controller injects the deployment/build ID) and `prometheus` (`temporal_slot_utilization`). KEDA uses whichever wants more pods. |
 | `cmd/web` | Dashboard, running **in the cluster** (`deploy/k8s/dashboard.yaml`) and reached through a supervised `kubectl port-forward` on `localhost:8080`. It reads Temporal (director query, deployment routing, per-version backlog), Kubernetes (pods, replicas) and Prometheus (slots per pod), and streams them over SSE. Its **k9s panel** runs a real k9s inside the pod, streamed to the page through a PTY and xterm.js. That k9s uses the pod's own ServiceAccount (read-only, `demo` namespace only), so nothing from your laptop's kubeconfig is ever visible. |
 
+### How the scaling works
+
+```mermaid
+%%{init: {"theme": "base", "flowchart": {"nodeSpacing": 40, "rankSpacing": 60, "padding": 18}, "themeVariables": {
+  "fontSize": "15px",
+  "primaryColor": "#141414",
+  "primaryTextColor": "#f8fafc",
+  "primaryBorderColor": "#444ce7",
+  "lineColor": "#1ff1a5",
+  "textColor": "#f8fafc",
+  "clusterBkg": "#1a1830",
+  "clusterBorder": "#465a78",
+  "titleColor": "#cacbf9",
+  "edgeLabelBackground": "#141414"
+}}}%%
+flowchart TB
+  subgraph card[" "]
+    direction TB
+    subgraph declare["YOU DECLARE"]
+      direction LR
+      wd[/"WorkerDeployment<br/>image · Progressive rollout"/]
+      wrt[/"WorkerResourceTemplate<br/>ScaledObject template"/]
+    end
+
+    twc["Temporal Worker Controller"]
+
+    subgraph version["EACH WORKER VERSION"]
+      so["ScaledObject"]
+      hpa["HPA"]
+      pods["Deployment<br/>order-worker pods"]
+    end
+
+    subgraph signals["SCALING SIGNALS"]
+      keda["KEDA"]
+      prom["Prometheus<br/>slot utilization"]
+    end
+
+    temporal[("Temporal<br/>task queue: orders")]
+  end
+
+  declare -- "① watches" --> twc
+  twc -- "② creates per Build ID" --> so
+  twc --> pods
+  twc -- "③ registers version<br/>ramps 25 → 50 → 100%" --> temporal
+  so -- "④ read by" --> keda
+  keda -- "⑤ backlog of<br/>this version" --> temporal
+  keda -- "⑤ slot use of<br/>this Build ID" --> prom
+  prom -. "scrapes" .-> pods
+  keda -- "⑥ creates · feeds" --> hpa
+  hpa -- "sets replicas" --> pods
+  pods -- "poll tasks" --> temporal
+
+  classDef card fill:#141414,stroke:#141414,color:#141414
+  classDef temporal fill:#141414,stroke:#444ce7,stroke-width:2px,color:#f8fafc
+  classDef controller fill:#141414,stroke:#b664ff,stroke-width:2px,color:#f8fafc
+  classDef keda fill:#141414,stroke:#1ff1a5,stroke-width:2px,color:#f8fafc
+  classDef prom fill:#141414,stroke:#ff6bff,stroke-width:2px,color:#f8fafc
+  classDef resource fill:#141414,stroke:#7f86f1,stroke-width:1px,stroke-dasharray:4 3,color:#cacbf9
+  classDef pods fill:#141414,stroke:#4fd8ff,stroke-width:2px,color:#f8fafc
+  class card card
+  class temporal temporal
+  class twc controller
+  class keda keda
+  class prom prom
+  class wd,wrt,so,hpa resource
+  class pods pods
+```
+
+1. You declare a **WorkerDeployment** (the worker image and its rollout strategy) and a **WorkerResourceTemplate** (a KEDA ScaledObject with the version-specific fields left blank).
+2. For every worker version (Build ID), the **Temporal Worker Controller** creates a Deployment and renders a ScaledObject from the template, filling in that version's Build ID. It removes both once the version has drained.
+3. The controller registers the version with **Temporal** and shifts new workflows onto it: 25% → 50% → 100%.
+4. **KEDA** picks up each ScaledObject and creates an HPA for it.
+5. KEDA reads two signals for that version alone: its **task queue backlog**, straight from Temporal, and its **slot utilization**, from Prometheus (scraped from the workers' SDK metrics).
+6. KEDA feeds the HPA whichever signal asks for more pods, and the HPA sets that version's replica count.
+
 The design follows Temporal's [scaling recommendations](https://github.com/temporalio/temporal-worker-controller/blob/main/docs/scaling-recommendations.md) for self-hosted or local servers:
 - **Backlog** reacts fast.
 - **Slot utilization** keeps busy pods from being scaled in just because the queue is momentarily empty.
