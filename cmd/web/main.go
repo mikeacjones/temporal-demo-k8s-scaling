@@ -25,11 +25,19 @@ import (
 )
 
 func main() {
+	// `/app k9s` execs the same isolated k9s the panel uses, for attaching a
+	// full terminal: kubectl exec -it deploy/dashboard -- /app k9s
+	if len(os.Args) > 1 && os.Args[1] == "k9s" {
+		runK9s()
+		return
+	}
 	addr := flag.String("addr", telemetry.Env("WEB_ADDR", "127.0.0.1:8080"), "listen address")
 	promURL := flag.String("prometheus", telemetry.Env("PROMETHEUS_URL", "http://localhost:9091"), "Prometheus base URL")
 	kubeContext := flag.String("kube-context", telemetry.Env("KUBE_CONTEXT", "temporal-demo"), "kubeconfig context")
 	k8sNS := flag.String("k8s-namespace", telemetry.Env("K8S_NAMESPACE", "demo"), "namespace of the demo workloads")
 	repoURL := flag.String("repo", telemetry.Env("REPO_URL", "https://github.com/mikeacjones/temporal-k8s-scaling-demo"), "URL for the QR code")
+	k9sCmd := flag.String("k9s", telemetry.Env("K9S_LAUNCHER", "auto"), `embedded k9s panel: "auto" (in-cluster k9s, else scripts/k9s.sh), a launcher path, or "" to disable`)
+	workDir := flag.String("work-dir", telemetry.Env("WORK_DIR", os.TempDir()), "writable scratch dir (k9s config, kubeconfig)")
 	uiURL := flag.String("temporal-ui", telemetry.Env("TEMPORAL_UI_URL", "http://localhost:8233"), "Temporal Web UI URL for the header link")
 	flag.Parse()
 
@@ -72,6 +80,22 @@ func main() {
 
 	static, _ := fs.Sub(web.Static, "static")
 	srv := dashboard.NewServer(col, tc, static, *repoURL, *uiURL)
+	switch *k9sCmd {
+	case "":
+	case "auto":
+		if cmd, env, err := inClusterK9s(*k8sNS, *workDir); err == nil {
+			srv.Terminal = &dashboard.Terminal{Command: cmd, Env: env, Logger: logger}
+			logger.Info("k9s panel: in-cluster, using the pod's service account")
+		} else {
+			logger.Info("k9s panel disabled: only available when running in the cluster", "reason", err)
+		}
+	default:
+		srv.Terminal = &dashboard.Terminal{Command: []string{*k9sCmd}, Env: []string{"PROFILE=" + *kubeContext}, Logger: logger}
+	}
+	if srv.Terminal != nil && !srv.Terminal.Available() {
+		logger.Warn("k9s panel disabled: launcher not found", "launcher", srv.Terminal.Command[0])
+		srv.Terminal = nil
+	}
 	go srv.Run(ctx)
 
 	hs := &http.Server{Addr: *addr, Handler: srv.Handler(), ReadHeaderTimeout: 5 * time.Second}

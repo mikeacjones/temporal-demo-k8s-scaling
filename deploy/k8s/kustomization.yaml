@@ -7,3 +7,4 @@ resources:
   - order-worker.yaml
   - order-worker-autoscaling.yaml
   - traffic-director.yaml
+  - dashboard.yaml

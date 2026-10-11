@@ -1,0 +1,18 @@
+# k9s settings for the booth, used via K9S_CONFIG_DIR. The in-cluster
+# dashboard writes this to a scratch dir at startup; scripts/k9s.sh copies it
+# to .run/k9s for local use, so k9s's own state files never land in git. Read-only so nothing
+# can be deleted or exec'd from the booth screen, and compact chrome so the
+# pod table gets the space.
+k9s:
+  refreshRate: 1
+  readOnly: true
+  skipLatestRevCheck: true
+  noExitOnCtrlC: true
+  ui:
+    skin: temporal
+    enableMouse: false
+    headless: true
+    logoless: true
+    crumbsless: true
+    splashless: true
+    noIcons: false

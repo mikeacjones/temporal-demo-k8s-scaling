@@ -9,6 +9,7 @@
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/noto-sans-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="vendor/xterm/xterm.css">
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -30,7 +31,10 @@
         <span class="dot" data-k="kubernetes">Kubernetes</span>
         <span class="dot" data-k="prometheus">Metrics</span>
       </div>
+      <div class="top-actions">
+      <button class="button secondary green small" id="k9s-toggle" hidden aria-pressed="false" title="Show the real cluster in k9s (k)">k9s</button>
       <a class="button secondary ultraviolet small" id="temporal-ui" href="http://localhost:8233" target="_blank" rel="noopener">Temporal UI ↗</a>
+      </div>
     </header>
 
     <section class="hero">
@@ -121,6 +125,16 @@
       <div id="constellation" class="constellation"></div>
     </section>
 
+    <!-- A real k9s, streamed from a PTY on the dashboard server: proof that
+         the pods above are genuine Kubernetes activity. Sized to the pod count. -->
+    <section class="card k9s-card" id="k9s-panel" hidden aria-label="Live k9s view of the demo namespace">
+      <div class="card-head">
+        <h2 class="heading">Live from Kubernetes</h2>
+        <span class="mono muted">k9s · read-only · namespace demo</span>
+      </div>
+      <div class="term-wrap" id="term"></div>
+    </section>
+
     <footer class="footer">
       <ol class="how" aria-label="How it works">
         <li><span class="how-num mono">01</span><b>Waves of orders</b><span class="how-text">Traffic cycles idle → peak → cooldown every ~5 minutes, forever.</span></li>
@@ -148,6 +162,8 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="vendor/xterm/xterm.js"></script>
+  <script src="vendor/xterm/addon-fit.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

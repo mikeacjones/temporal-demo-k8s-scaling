@@ -5,7 +5,7 @@ A self-running booth demo of **Temporal workers that scale themselves** on Kuber
 - the [Temporal Worker Controller](https://github.com/temporalio/temporal-worker-controller) managing **versioned** workers (Worker Versioning, progressive rollouts, pinned workflows)
 - **KEDA**, one `ScaledObject` per worker version (rendered by a `WorkerResourceTemplate`), scaling on the version's **task queue backlog** *and* **slot utilization**
 - a **traffic director** entity workflow on its own worker that cycles traffic up and down forever and rolls out a new worker version every few cycles
-- a dashboard in the temporal.io look (starfield, Ziggy) and `k9s` to watch the pods
+- a dashboard in the temporal.io look (starfield, Ziggy) with a **live, embedded k9s** showing the real pods being scheduled and removed
 
 ![architecture](docs/architecture.svg)
 
@@ -17,7 +17,7 @@ A self-running booth demo of **Temporal workers that scale themselves** on Kuber
 | `cmd/worker` | The order worker (task queue `orders`). Each pod gets only **4 activity slots**, so traffic forces scale-out. It uses poller autoscaling and Worker Versioning (`Pinned`), connects with the env vars the controller injects, and exports SDK metrics labelled per version. |
 | `WorkerDeployment` | `Progressive` rollout (25% → 50% → 100%) with short sunset delays, so drained versions disappear quickly. |
 | `WorkerResourceTemplate` | Renders a KEDA `ScaledObject` per Build ID with two triggers: `temporal` (that version's backlog; the controller injects the deployment/build ID) and `prometheus` (`temporal_slot_utilization`). KEDA uses whichever wants more pods. |
-| `cmd/web` | Dashboard on the host. It reads Temporal (director query, deployment routing, per-version backlog), Kubernetes (pods, replicas) and Prometheus (slots per pod), and streams them over SSE. |
+| `cmd/web` | Dashboard, running **in the cluster** (`deploy/k8s/dashboard.yaml`) and reached through a supervised `kubectl port-forward` on `localhost:8080`. It reads Temporal (director query, deployment routing, per-version backlog), Kubernetes (pods, replicas) and Prometheus (slots per pod), and streams them over SSE. Its **k9s panel** runs a real k9s inside the pod, streamed to the page through a PTY and xterm.js. That k9s uses the pod's own ServiceAccount (read-only, `demo` namespace only), so nothing from your laptop's kubeconfig is ever visible. |
 
 The design follows Temporal's [scaling recommendations](https://github.com/temporalio/temporal-worker-controller/blob/main/docs/scaling-recommendations.md) for self-hosted or local servers:
 - **Backlog** reacts fast.
@@ -26,21 +26,21 @@ The design follows Temporal's [scaling recommendations](https://github.com/tempo
 
 ## Prerequisites
 
-macOS or Linux with: Docker (Desktop) with **≥ 8 GB** and 6 CPUs available, `minikube`, `kubectl`, `helm`, `go` ≥ 1.27, the `temporal` CLI, and `k9s`.
+macOS or Linux with: Docker (Desktop) with **≥ 8 GB** and 6 CPUs available, `minikube`, `kubectl`, `helm`, `go` ≥ 1.27, and the `temporal` CLI. (k9s ships inside the dashboard image; you don't need it locally.)
 
 ## Run it
 
 ```bash
 make up          # dev server + minikube + cert-manager, Worker Controller, KEDA, Prometheus + images + workloads + dashboard
-make k9s         # in another terminal: watch pods come and go
+make k9s-window  # optional: pop k9s out into its own Terminal window
 ```
 
-- Dashboard: <http://localhost:8080> (staff controls: `?controls=1`, big screen: `?kiosk=1`)
+- Dashboard: <http://localhost:8080>. Press **`k`** (or the **k9s** button, or open `?k9s=1`) for the live k9s panel. Staff controls: `?controls=1`. Big screen: `?kiosk=1`.
 - Temporal UI: <http://localhost:8233>
 
 The first run takes a few minutes while it pulls charts and images. After that, `make up` is idempotent and quick.
 
-The host-side processes (dev server, Prometheus port-forward, dashboard) run under `scripts/booth.sh`, which restarts any of them if they die. The dev server runs **in memory**, so a restart wipes Temporal's state. That's fine: the director recreates its entity workflow within 15 seconds, and the Worker Controller re-registers the current version. Completed orders expire after 1 hour (the director enforces namespace retention), so memory stays flat all day.
+The host-side processes run under `scripts/booth.sh`, which restarts any of them if they die: the dev server, the dashboard port-forward, and a cluster guard. The guard restarts Docker Desktop or minikube if they stop, and kicks the port-forward if the dashboard stops answering. The dev server runs **in memory**, so a restart wipes Temporal's state. That's fine: the director recreates its entity workflow within 15 seconds, and the Worker Controller re-registers the current version. Completed orders expire after 1 hour (the director enforces namespace retention), so memory stays flat all day.
 
 | Command | |
 |---|---|
@@ -49,6 +49,8 @@ The host-side processes (dev server, Prometheus port-forward, dashboard) run und
 | `make reset` | Delete the minikube cluster |
 | `make status` | WorkerDeployment / WRT / ScaledObject / HPA / pods |
 | `make logs` | Tail the host-side logs in `.run/` |
+| `make k9s` / `make k9s-window` | Full-size k9s (inside the dashboard pod), here or in a new Terminal window |
+| `make dashboard` | Rebuild and roll only the dashboard, without triggering a worker rollout |
 | `make deploy` | Re-apply manifests. With new images (`make images deploy`) this is a manual rollout. |
 | `make test` | Unit tests |
 
@@ -57,9 +59,10 @@ The host-side processes (dev server, Prometheus port-forward, dashboard) run und
 ## Booth checklist
 
 1. Give Docker Desktop ≥ 8 GB RAM. Turn off sleep and the screen saver.
-2. `make up`, then open `http://localhost:8080/?kiosk=1`. The dashboard always fits its window without scrolling: full screen on a TV, a small monitor, or half the screen next to `k9s` (`make k9s`). It switches to a stacked layout in narrow windows and hides secondary text when space is tight.
-3. Keep a staff tab at `?controls=1` for **Surge ⚡** (extra traffic for 60s), **Pause**, and **Roll out version**.
-4. The dashboard only listens on `127.0.0.1` because the control endpoints are unauthenticated. To expose it, set `WEB_ADDR=0.0.0.0:8080`, but only on a trusted network.
+2. `make up`, then open `http://localhost:8080/?kiosk=1&k9s=1`. The dashboard always fits its window without scrolling: full screen on a TV, a small monitor, or half the screen next to a terminal. It switches to a stacked layout in narrow windows and hides secondary text when space is tight.
+3. **Proving it's real:** the k9s panel is a genuine k9s talking to the cluster. It sits beside the pod tiles and is sized to the pod list, so new pods appear (flashing green) and terminating ones disappear while the chart keeps its space. For a full-size view, use `make k9s-window` (macOS) or `make k9s` in any terminal. Both attach to the same isolated, read-only k9s inside the dashboard pod.
+4. Keep a staff tab at `?controls=1` for **Surge ⚡** (extra traffic for 60s), **Pause**, and **Roll out version**.
+5. The dashboard is only reachable on `127.0.0.1` (via the port-forward) because the control endpoints are unauthenticated.
 
 ## Tuning
 

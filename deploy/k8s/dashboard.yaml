@@ -1,0 +1,110 @@
+# The booth dashboard runs in the cluster, next to what it shows. Its embedded
+# k9s panel runs inside this pod as this ServiceAccount, so it can only ever
+# see (read-only) the demo namespace - never anything from a laptop kubeconfig.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dashboard-readonly
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "events", "services", "endpoints"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["keda.sh"]
+    resources: ["scaledobjects"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["temporal.io"]
+    resources: ["workerdeployments", "workerresourcetemplates", "connections"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dashboard-readonly
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dashboard-readonly
+subjects:
+  - kind: ServiceAccount
+    name: dashboard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  labels:
+    app: dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      serviceAccountName: dashboard
+      containers:
+        - name: dashboard
+          image: dashboard:dev
+          imagePullPolicy: Never
+          env:
+            - name: WEB_ADDR
+              value: ":8080"
+            - name: TEMPORAL_ADDRESS
+              value: host.minikube.internal:7233
+            - name: TEMPORAL_NAMESPACE
+              value: default
+            # Link target for the header button, opened in the booth browser.
+            - name: TEMPORAL_UI_URL
+              value: http://localhost:8233
+            - name: PROMETHEUS_URL
+              value: http://prometheus-server.monitoring.svc
+            - name: K8S_NAMESPACE
+              value: demo
+            - name: WORK_DIR
+              value: /work
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /api/info
+              port: http
+            periodSeconds: 5
+          volumeMounts:
+            - name: work
+              mountPath: /work
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 512Mi   # headroom for a few k9s sessions
+      volumes:
+        - name: work
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+spec:
+  selector:
+    app: dashboard
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

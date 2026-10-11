@@ -349,6 +349,45 @@ body.fit-3 .footer { justify-content: flex-end; position: fixed; right: 1rem; bo
 body.fit-3 .app { grid-template-rows: auto auto auto auto minmax(7rem, 1.8fr) minmax(5rem, 1fr) 0; }
 body.fit-3 .speech { display: none; }
 
+/* ---------- Embedded k9s (bottom panel, replaces the footer while open) ---------- */
+.top-actions { display: flex; gap: .6rem; align-items: center; }
+#k9s-toggle[aria-pressed="true"] { background: var(--grad-green); color: var(--space-black); }
+.k9s-card[hidden] { display: none; }
+.k9s-card { grid-area: k9s; display: flex; flex-direction: column; padding: .55rem .8rem .6rem; }
+.k9s-card .card-head { margin-bottom: .35rem; }
+/* Height is set inline by app.js: (pod rows + k9s chrome) × line height. */
+.term-wrap { height: 10rem; min-height: 0; overflow: hidden; background: #0e0f15; border: 1px solid var(--border); padding: .2rem .35rem; transition: height .35s ease; }
+.term-wrap .xterm, .term-wrap .xterm-viewport { background: transparent !important; }
+.term-wrap .xterm-viewport { overflow: hidden !important; }
+body.k9s-on .footer { display: none; }
+/* While k9s is open it sits beside the pod constellation (k9s on the wide
+   side), so the chart keeps its height. Its row is exactly as tall as k9s needs. */
+body.k9s-on .app, body.k9s-on.fit-3 .app {
+  grid-template-rows: auto auto auto auto minmax(8rem, 1fr) auto 0;
+  grid-template-areas:
+    "top    top"
+    "hero   ziggy"
+    "cycle  cycle"
+    "kpis   kpis"
+    "chart  versions"
+    "k9s    pods"
+    "foot   foot";
+}
+@media (max-aspect-ratio: 5/4) {
+  body.k9s-on .app, body.k9s-on.fit-3 .app {
+    grid-template-rows: auto auto auto auto minmax(8rem, 1fr) minmax(6rem, .7fr) auto 0;
+    grid-template-areas:
+      "top      top"
+      "hero     ziggy"
+      "cycle    cycle"
+      "kpis     kpis"
+      "chart    chart"
+      "versions pods"
+      "k9s      k9s"
+      "foot     foot";
+  }
+}
+
 /* ---------- Controls + toast ---------- */
 .controls { position: fixed; right: 1rem; bottom: 1rem; z-index: 20; display: grid; gap: .6rem; padding: .8rem 1rem; max-width: calc(100vw - 2rem); }
 .controls[hidden] { display: none; }
@@ -386,6 +425,7 @@ body.kiosk { cursor: none; }
   .how li { border-right: 0; border-bottom: 1px solid var(--border); }
   .how li::after { display: none; }
   .controls { left: 16px; right: 16px; }
+  #k9s-toggle, .k9s-card { display: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

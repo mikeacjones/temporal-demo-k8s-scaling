@@ -427,6 +427,9 @@
     renderKPIs(snap);
     renderVersions(snap);
     renderPods(snap);
+    // k9s lists every pod in the namespace: workers (incl. terminating), the
+    // traffic director, and this dashboard's own pod.
+    k9s.setPodCount((snap.pods || []).length + (snap.directorPod ? 1 : 0) + 1);
     const vc = (snap.versions || []).length;
     if (vc !== versionCount) { versionCount = vc; scheduleFit(); }
     const d = snap.director;
@@ -436,6 +439,114 @@
     if (pauseBtn && d) { pauseBtn.textContent = d.paused ? "Resume" : "Pause"; pauseBtn.dataset.action = d.paused ? "resume" : "pause"; }
     chart.draw();
   }
+
+  // ---------------------------------------------------------- embedded k9s
+  // A real k9s streamed from a PTY on the dashboard server. The panel is only
+  // as tall as the pod list needs: it grows as soon as pods appear and shrinks
+  // only after the count has been lower for a while, so the layout stays calm.
+  const k9s = (() => {
+    const panel = $("k9s-panel"), wrap = $("term"), btn = $("k9s-toggle");
+    const CHROME_ROWS = 5;      // k9s info line, table border/title, column header, bottom border, spare
+    const MIN_ROWS = 7;
+    const SHRINK_DELAY = 20000; // ms the pod count must stay lower before shrinking
+    let term = null, fitAddon = null, ws = null, on = false, available = false;
+    let rows = 0, wantRows = 0, shrinkTimer = 0, retry = 0;
+
+    // Terminal text scales with the window but never gets unreadably small.
+    const fontPx = () => Math.max(10, Math.round(Math.min(innerHeight * 0.0105, innerWidth * 0.0072)));
+    const cellH = () => term?._core?._renderService?.dimensions?.css?.cell?.height || fontPx() * 1.2;
+    const maxRows = () => Math.max(MIN_ROWS, Math.floor((innerHeight * 0.42) / cellH()));
+
+    function sendSize() {
+      if (!term) return;
+      try { fitAddon.fit(); } catch (_) {}
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+    }
+    function applyRows(n) {
+      rows = n;
+      wrap.style.height = `${Math.ceil(n * cellH()) + 6}px`;
+      // Let the height transition settle, then refit the terminal and the page.
+      setTimeout(() => { sendSize(); scheduleFit(); }, 380);
+    }
+    function setPodCount(count) {
+      if (!on || !term) return;
+      wantRows = Math.min(maxRows(), Math.max(MIN_ROWS, count + CHROME_ROWS));
+      if (wantRows > rows) { clearTimeout(shrinkTimer); shrinkTimer = 0; applyRows(wantRows); }
+      else if (wantRows < rows && !shrinkTimer) {
+        shrinkTimer = setTimeout(() => { shrinkTimer = 0; if (wantRows < rows) applyRows(wantRows); }, SHRINK_DELAY);
+      }
+    }
+    function connect() {
+      if (!on) return;
+      ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/k9s`);
+      ws.binaryType = "arraybuffer";
+      ws.onopen = () => { retry = 0; sendSize(); };
+      ws.onmessage = (e) => term && term.write(typeof e.data === "string" ? e.data : new Uint8Array(e.data));
+      ws.onclose = () => {
+        ws = null;
+        if (!on) return;
+        term && term.write("\r\n\x1b[38;2;146;164;195m  reconnecting to k9s…\x1b[0m");
+        setTimeout(connect, Math.min(10000, 1000 * 2 ** retry++));
+      };
+    }
+    function start() {
+      term = new Terminal({
+        fontFamily: '"Noto Sans Mono", ui-monospace, Menlo, monospace',
+        fontSize: fontPx(),
+        lineHeight: 1.0,
+        scrollback: 0,
+        cursorBlink: false,
+        cursorStyle: "underline",
+        allowTransparency: true,
+        theme: {
+          background: "#00000000", foreground: "#f8fafc", cursor: "#00000000", selectionBackground: "#444ce766",
+          black: "#141414", red: "#ff5555", green: "#1ff1a5", yellow: "#fecb2f", blue: "#7f86f1", magenta: "#b664ff", cyan: "#4fd8ff", white: "#f8fafc",
+          brightBlack: "#465a78", brightRed: "#ff8080", brightGreen: "#59fda0", brightYellow: "#ffe08a", brightBlue: "#a5a9f5", brightMagenta: "#cfa0ff", brightCyan: "#9be9ff", brightWhite: "#ffffff",
+        },
+      });
+      fitAddon = new FitAddon.FitAddon();
+      term.loadAddon(fitAddon);
+      term.open(wrap);
+      term.onData((d) => ws && ws.readyState === 1 && ws.send(new TextEncoder().encode(d)));
+      applyRows(MIN_ROWS + 4);
+      connect();
+    }
+    function stop() {
+      clearTimeout(shrinkTimer); shrinkTimer = 0;
+      if (ws) { const w = ws; ws = null; w.onclose = null; w.close(); }
+      if (term) { term.dispose(); term = null; }
+      rows = 0;
+    }
+    function toggle(force) {
+      if (!available) return;
+      on = force ?? !on;
+      document.body.classList.toggle("k9s-on", on);
+      panel.hidden = !on;
+      btn.setAttribute("aria-pressed", String(on));
+      try { localStorage.setItem("k9s", on ? "1" : "0"); } catch (_) {}
+      if (on) start(); else stop();
+      scheduleFit();
+    }
+    function enable() {
+      available = true;
+      btn.hidden = false;
+      btn.addEventListener("click", () => toggle());
+      let saved = null;
+      try { saved = localStorage.getItem("k9s"); } catch (_) {}
+      if (params.get("k9s") === "1" || (params.get("k9s") !== "0" && saved === "1")) toggle(true);
+    }
+    addEventListener("keydown", (e) => {
+      if (e.key !== "k" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.target.closest && e.target.closest(".xterm, input, textarea")) return; // typing into k9s
+      toggle();
+    });
+    addEventListener("resize", () => {
+      if (!term) return;
+      term.options.fontSize = fontPx();
+      setTimeout(() => applyRows(Math.min(maxRows(), Math.max(rows, MIN_ROWS))), 50);
+    });
+    return { enable, setPodCount };
+  })();
 
   // ------------------------------------------------------------ data feed
   function connect() {
@@ -482,6 +593,7 @@
 
   fetch("api/info").then((r) => r.ok ? r.json() : null).then((info) => {
     if (info && info.temporalUi) $("temporal-ui").href = info.temporalUi;
+    if (info && info.k9s) k9s.enable();
   }).catch(() => {});
 
   connect();

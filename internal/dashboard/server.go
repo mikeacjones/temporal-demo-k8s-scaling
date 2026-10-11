@@ -25,6 +25,9 @@ type Server struct {
 	repoURL   string
 	uiURL     string
 
+	// Terminal, when set, serves an embedded read-only k9s at /api/k9s.
+	Terminal *Terminal
+
 	mu      sync.Mutex
 	subs    map[chan []byte]struct{}
 	history []Point
@@ -81,8 +84,15 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /qr.png", s.qr)
 	mux.HandleFunc("GET /api/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"temporalUi": s.uiURL, "repo": s.repoURL})
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"temporalUi": s.uiURL,
+			"repo":       s.repoURL,
+			"k9s":        s.Terminal != nil && s.Terminal.Available(),
+		})
 	})
+	if s.Terminal != nil {
+		mux.Handle("GET /api/k9s", s.Terminal)
+	}
 	mux.HandleFunc("POST /api/pause", s.signal(director.SignalPause))
 	mux.HandleFunc("POST /api/resume", s.signal(director.SignalResume))
 	mux.HandleFunc("POST /api/rollout", s.signal(director.SignalRolloutNow))
