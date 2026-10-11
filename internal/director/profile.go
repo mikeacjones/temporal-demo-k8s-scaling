@@ -37,8 +37,8 @@ func DefaultConfig() Config {
 		PeakSeconds:         60,
 		RampDownSeconds:     90,
 		CooldownSeconds:     30,
-		BaseRate:            1,
-		PeakRate:            12,
+		BaseRate:            0.6,
+		PeakRate:            10,
 		TickSeconds:         2,
 		RolloutEveryNCycles: 3,
 	}

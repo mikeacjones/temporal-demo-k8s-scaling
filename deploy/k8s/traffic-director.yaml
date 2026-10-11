@@ -1,0 +1,73 @@
+# The traffic director: a dedicated worker for the TrafficDirector entity
+# workflow. It is intentionally a plain, unscaled Deployment.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traffic-director
+---
+# Just enough access to bump the order worker's version annotation.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: traffic-director
+rules:
+  - apiGroups: ["temporal.io"]
+    resources: ["workerdeployments"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: traffic-director
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: traffic-director
+subjects:
+  - kind: ServiceAccount
+    name: traffic-director
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-director
+  labels:
+    app: traffic-director
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-director
+  template:
+    metadata:
+      labels:
+        app: traffic-director
+    spec:
+      serviceAccountName: traffic-director
+      containers:
+        - name: director
+          image: traffic-director:dev
+          imagePullPolicy: Never
+          env:
+            - name: TEMPORAL_ADDRESS
+              value: host.minikube.internal:7233
+            - name: TEMPORAL_NAMESPACE
+              value: default
+            - name: WORKER_K8S_NAMESPACE
+              value: demo
+            - name: WORKER_DEPLOYMENT
+              value: order-worker
+          ports:
+            - name: http
+              containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 48Mi
+            limits:
+              memory: 256Mi

@@ -1,0 +1,74 @@
+# The autoscaled, versioned order worker. The Worker Controller creates one
+# Deployment per Build ID (image tag + pod-template hash), registers it with
+# Temporal, and progressively shifts new workflows onto it.
+apiVersion: temporal.io/v1alpha1
+kind: WorkerDeployment
+metadata:
+  name: order-worker
+spec:
+  workerOptions:
+    connectionRef:
+      name: dev-server
+    temporalNamespace: default
+  rollout:
+    strategy: Progressive
+    steps:
+      - rampPercentage: 25
+        pauseDuration: 45s
+      - rampPercentage: 50
+        pauseDuration: 45s
+  sunset:
+    # Once a version has drained its pinned workflows: scale it to zero
+    # shortly after, and delete its Deployment a bit later.
+    scaledownDelay: 30s
+    deleteDelay: 2m
+  deployment:
+    # Replicas are owned by the per-version KEDA ScaledObject.
+    template:
+      metadata:
+        labels:
+          app: order-worker
+        annotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "9090"
+          prometheus.io/path: /metrics
+      spec:
+        terminationGracePeriodSeconds: 30
+        containers:
+          - name: worker
+            image: order-worker:dev
+            imagePullPolicy: Never
+            ports:
+              - name: metrics
+                containerPort: 9090
+            env:
+              - name: POD_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.name
+              # Set by the traffic director on each automatic rollout.
+              - name: VERSION_LABEL
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.annotations['demo.temporal.io/version-label']
+              # Deliberately tiny: 4 concurrent activities per pod forces
+              # the demo traffic to scale out.
+              - name: ACTIVITY_SLOTS
+                value: "4"
+              - name: WORKFLOW_SLOTS
+                value: "10"
+            readinessProbe:
+              httpGet:
+                path: /healthz
+                port: metrics
+              periodSeconds: 2
+            lifecycle:
+              preStop:
+                sleep:
+                  seconds: 2
+            resources:
+              requests:
+                cpu: 50m
+                memory: 48Mi
+              limits:
+                memory: 192Mi

@@ -1,0 +1,6 @@
+.git
+.run
+bin
+deploy
+scripts
+*.md

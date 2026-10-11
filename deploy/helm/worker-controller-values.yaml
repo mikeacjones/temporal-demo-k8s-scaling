@@ -1,0 +1,11 @@
+# Temporal Worker Controller values for the booth demo.
+workerResourceTemplate:
+  # Allow WorkerResourceTemplates to render KEDA ScaledObjects (per worker
+  # version) in addition to plain HPAs. This also grants the controller RBAC.
+  allowedResources:
+    - kinds: ["HorizontalPodAutoscaler"]
+      apiGroups: ["autoscaling"]
+      resources: ["horizontalpodautoscalers"]
+    - kinds: ["ScaledObject"]
+      apiGroups: ["keda.sh"]
+      resources: ["scaledobjects"]

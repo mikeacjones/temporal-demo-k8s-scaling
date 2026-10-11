@@ -1,0 +1,9 @@
+# Points the Worker Controller (and, via injected env vars, every worker pod)
+# at the Temporal dev server running on the laptop. No secret refs means a
+# plaintext, no-credentials connection.
+apiVersion: temporal.io/v1alpha1
+kind: Connection
+metadata:
+  name: dev-server
+spec:
+  hostPort: host.minikube.internal:7233

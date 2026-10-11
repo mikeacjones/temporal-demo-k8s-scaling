@@ -13,10 +13,12 @@ import (
 	"time"
 
 	enumspb "go.temporal.io/api/enums/v1"
+	namespacepb "go.temporal.io/api/namespace/v1"
+	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/contrib/envconfig"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -28,7 +30,7 @@ import (
 func main() {
 	logger, tlog := telemetry.Logger()
 
-	opts, err := envconfig.LoadDefaultClientOptions()
+	opts, err := telemetry.ClientOptions()
 	if err != nil {
 		logger.Error("load client options", "error", err)
 		os.Exit(1)
@@ -93,7 +95,9 @@ func main() {
 		}
 		logger.Debug("traffic director running", "runId", run.GetRunID())
 	}
+	retention, _ := time.ParseDuration(telemetry.Env("NAMESPACE_RETENTION", "1h"))
 	ensure()
+	enforceRetention(ctx, c, opts.Namespace, retention, logger)
 	t := time.NewTicker(15 * time.Second)
 	defer t.Stop()
 	for {
@@ -105,8 +109,31 @@ func main() {
 			return
 		case <-t.C:
 			ensure()
+			enforceRetention(ctx, c, opts.Namespace, retention, logger)
 		}
 	}
+}
+
+// enforceRetention keeps completed orders from piling up in the in-memory dev
+// server during an all-day booth run. Re-applied periodically because a dev
+// server restart resets it to the 24h default.
+func enforceRetention(ctx context.Context, c client.Client, ns string, retention time.Duration, logger *slog.Logger) {
+	if retention <= 0 {
+		return
+	}
+	desc, err := c.WorkflowService().DescribeNamespace(ctx, &workflowservice.DescribeNamespaceRequest{Namespace: ns})
+	if err != nil || desc.GetConfig().GetWorkflowExecutionRetentionTtl().AsDuration() == retention {
+		return
+	}
+	_, err = c.WorkflowService().UpdateNamespace(ctx, &workflowservice.UpdateNamespaceRequest{
+		Namespace: ns,
+		Config:    &namespacepb.NamespaceConfig{WorkflowExecutionRetentionTtl: durationpb.New(retention)},
+	})
+	if err != nil {
+		logger.Warn("set namespace retention", "error", err)
+		return
+	}
+	logger.Info("set namespace retention", "namespace", ns, "retention", retention)
 }
 
 func dialWithRetry(opts client.Options, logger *slog.Logger) (client.Client, error) {

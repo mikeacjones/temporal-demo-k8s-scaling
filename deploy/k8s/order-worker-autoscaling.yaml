@@ -1,0 +1,62 @@
+# One KEDA ScaledObject per worker version, rendered by the Worker Controller.
+# KEDA picks whichever trigger asks for more replicas:
+#   - temporal:   this version's task queue backlog (scales out fast)
+#   - prometheus: this version's slot utilization (keeps busy pods from
+#                 being scaled in just because the queue is momentarily empty)
+apiVersion: temporal.io/v1alpha1
+kind: WorkerResourceTemplate
+metadata:
+  name: order-worker-keda
+spec:
+  workerDeploymentRef:
+    name: order-worker
+  template:
+    apiVersion: keda.sh/v1alpha1
+    kind: ScaledObject
+    spec:
+      # {} = "controller, fill in this version's Deployment".
+      scaleTargetRef: {}
+      # >= 1 so a new version is always polling (rollouts need pollers).
+      minReplicaCount: 1
+      maxReplicaCount: 10
+      pollingInterval: 5
+      advanced:
+        horizontalPodAutoscalerConfig:
+          behavior:
+            scaleUp:
+              stabilizationWindowSeconds: 0
+              policies:
+                - type: Pods
+                  value: 4
+                  periodSeconds: 10
+            scaleDown:
+              stabilizationWindowSeconds: 30
+              policies:
+                - type: Pods
+                  value: 2
+                  periodSeconds: 15
+      triggers:
+        - type: temporal
+          metadata:
+            endpoint: host.minikube.internal:7233
+            taskQueue: orders
+            queueTypes: workflow,activity
+            targetQueueSize: "5"
+            # Empty = filled in per version by the Worker Controller.
+            namespace: ""
+            workerDeploymentName: ""
+            workerDeploymentBuildId: ""
+        - type: prometheus
+          # Value (not AverageValue): utilization is already a ratio across
+          # the version's pods, so HPA scales by current/target.
+          metricType: Value
+          metadata:
+            serverAddress: http://prometheus-server.monitoring.svc:80
+            threshold: "0.7"
+            query: >-
+              max(temporal_slot_utilization{
+                temporal_worker_deployment_name="{{temporal_worker_deployment_name}}",
+                temporal_worker_build_id="{{temporal_worker_build_id}}",
+                temporal_namespace="{{temporal_namespace}}",
+                worker_type="ActivityWorker"
+              }) or vector(0)

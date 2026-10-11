@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/contrib/envconfig"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -35,7 +34,7 @@ func main() {
 
 	logger, tlog := telemetry.Logger()
 
-	opts, err := envconfig.LoadDefaultClientOptions()
+	opts, err := telemetry.ClientOptions()
 	if err != nil {
 		logger.Error("load client options", "error", err)
 		os.Exit(1)

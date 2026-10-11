@@ -1,0 +1,44 @@
+# A deliberately slim Prometheus: just the server, scraping annotated pods
+# every 5s, plus the slot-utilization recording rule KEDA scales on.
+alertmanager:
+  enabled: false
+kube-state-metrics:
+  enabled: false
+prometheus-node-exporter:
+  enabled: false
+prometheus-pushgateway:
+  enabled: false
+configmapReload:
+  prometheus:
+    enabled: false
+server:
+  global:
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    evaluation_interval: 5s
+  retention: 6h
+  persistentVolume:
+    enabled: false
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 768Mi }
+serverFiles:
+  recording_rules.yml:
+    groups:
+      - name: temporal-worker-slots
+        interval: 5s
+        rules:
+          # Fraction of a worker version's slots in use. The labels match the
+          # Worker Controller's WRT tokens so each version's ScaledObject can
+          # select only its own Build ID.
+          - record: temporal_slot_utilization
+            expr: |
+              sum by (temporal_worker_deployment_name, temporal_worker_build_id, temporal_namespace, worker_type) (
+                temporal_worker_task_slots_used{task_queue="orders"}
+              )
+              /
+              clamp_min(
+                sum by (temporal_worker_deployment_name, temporal_worker_build_id, temporal_namespace, worker_type) (
+                  temporal_worker_task_slots_used{task_queue="orders"}
+                  + temporal_worker_task_slots_available{task_queue="orders"}
+                ), 1)

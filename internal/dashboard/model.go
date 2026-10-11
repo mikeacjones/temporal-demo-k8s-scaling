@@ -10,22 +10,22 @@ import (
 
 // Snapshot is pushed to every browser once per second.
 type Snapshot struct {
-	Time         time.Time          `json:"time"`
-	Director     *director.Snapshot `json:"director,omitempty"`
-	Queue        QueueStats         `json:"queue"`
-	RunningOrders int64             `json:"runningOrders"`
-	Versions     []Version          `json:"versions"`
-	Pods         []Pod              `json:"pods"`
-	DirectorPod  *Pod               `json:"directorPod,omitempty"`
-	Health       Health             `json:"health"`
-	Point        Point              `json:"point"`
+	Time          time.Time          `json:"time"`
+	Director      *director.Snapshot `json:"director,omitempty"`
+	Queue         QueueStats         `json:"queue"`
+	RunningOrders int64              `json:"runningOrders"`
+	Versions      []Version          `json:"versions"`
+	Pods          []Pod              `json:"pods"`
+	DirectorPod   *Pod               `json:"directorPod,omitempty"`
+	Health        Health             `json:"health"`
+	Point         Point              `json:"point"`
 }
 
 type Health struct {
-	Temporal   bool   `json:"temporal"`
-	Kubernetes bool   `json:"kubernetes"`
-	Prometheus bool   `json:"prometheus"`
-	Director   bool   `json:"director"`
+	Temporal   bool     `json:"temporal"`
+	Kubernetes bool     `json:"kubernetes"`
+	Prometheus bool     `json:"prometheus"`
+	Director   bool     `json:"director"`
 	Errors     []string `json:"errors,omitempty"`
 }
 
@@ -41,16 +41,16 @@ type QueueStats struct {
 // Version merges what Temporal knows (routing status) with what Kubernetes
 // knows (replicas) for one Build ID.
 type Version struct {
-	BuildID     string  `json:"buildId"`
-	Label       string  `json:"label"`
-	Status      string  `json:"status"` // current | ramping | draining | drained | inactive
-	RampPercent float64 `json:"rampPercent"`
-	Drainage    string  `json:"drainage,omitempty"`
-	Desired     int32   `json:"desired"`
-	Ready       int32   `json:"ready"`
-	Backlog     int64   `json:"backlog"`
-	SlotsUsed   float64 `json:"slotsUsed"`
-	SlotsTotal  float64 `json:"slotsTotal"`
+	BuildID     string    `json:"buildId"`
+	Label       string    `json:"label"`
+	Status      string    `json:"status"` // current | ramping | draining | drained | inactive
+	RampPercent float64   `json:"rampPercent"`
+	Drainage    string    `json:"drainage,omitempty"`
+	Desired     int32     `json:"desired"`
+	Ready       int32     `json:"ready"`
+	Backlog     int64     `json:"backlog"`
+	SlotsUsed   float64   `json:"slotsUsed"`
+	SlotsTotal  float64   `json:"slotsTotal"`
 	Created     time.Time `json:"created"`
 }
 

@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/contrib/envconfig"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 
@@ -26,7 +25,7 @@ func main() {
 	buildID := os.Getenv("TEMPORAL_WORKER_BUILD_ID")
 	versioned := deploymentName != "" && buildID != ""
 
-	opts, err := envconfig.LoadDefaultClientOptions()
+	opts, err := telemetry.ClientOptions()
 	if err != nil {
 		logger.Error("load client options", "error", err)
 		os.Exit(1)

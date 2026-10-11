@@ -17,6 +17,7 @@ import (
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/contrib/envconfig"
 	"go.temporal.io/sdk/contrib/opentelemetry"
 	"go.temporal.io/sdk/log"
 )
@@ -106,4 +107,22 @@ func Env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// ClientOptions loads Temporal connection settings from TEMPORAL_* environment
+// variables only (the ones the Worker Controller injects). The CLI config file
+// is deliberately ignored so a developer's default profile (e.g. pointing at
+// Temporal Cloud) can never redirect the demo away from the local dev server.
+func ClientOptions() (client.Options, error) {
+	opts, err := envconfig.LoadClientOptions(envconfig.LoadClientOptionsRequest{DisableFile: true})
+	if err != nil {
+		return opts, err
+	}
+	if opts.HostPort == "" {
+		opts.HostPort = "localhost:7233"
+	}
+	if opts.Namespace == "" {
+		opts.Namespace = "default"
+	}
+	return opts, nil
 }
