@@ -166,7 +166,7 @@ strong { font-weight: 600; color: var(--indigo-100); }
 .dot.ok::before { background: var(--green); box-shadow: 0 0 10px var(--green); }
 .dot.bad::before { background: var(--coral); box-shadow: 0 0 10px var(--coral); }
 
-main { padding: 0 var(--gutter); display: grid; gap: 20px; max-width: 1760px; margin: 0 auto; }
+main { padding: 0 var(--gutter); display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; max-width: 1760px; margin: 0 auto; }
 
 .card {
   background-color: rgba(20, 20, 20, .82);
@@ -283,14 +283,15 @@ main { padding: 0 var(--gutter); display: grid; gap: 20px; max-width: 1760px; ma
 .lg-backlog::before { background: var(--pink); }
 .lg-pods::before { background: var(--indigo-300); }
 
-.versions { display: grid; gap: 12px; }
+.versions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .version {
   --vc: var(--green);
+  min-width: 0;
   border: 1px solid var(--border); padding: 14px 16px; display: grid; gap: 10px;
   background: linear-gradient(90deg, color-mix(in srgb, var(--vc) 10%, transparent), transparent 60%);
   border-left: 3px solid var(--vc);
 }
-.version-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.version-top { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .version-name { font-size: 22px; font-weight: 400; text-transform: capitalize; display: flex; align-items: center; gap: 10px; }
 .version-name::before { content: ""; width: 10px; height: 10px; background: var(--vc); box-shadow: 0 0 12px var(--vc); }
 .badge {
