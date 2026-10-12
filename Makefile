@@ -25,7 +25,7 @@ PROMETHEUS_CHART_VERSION ?= 29.36.1
 .PHONY: up tools cluster platform images dashboard deploy booth booth-fg stop down reset k9s k9s-window status logs test web record
 
 up: tools booth cluster platform images deploy status ## Bring up the whole demo
-	@echo; echo "Dashboard:   http://localhost:8080   (k9s panel: press k, or ?k9s=1; staff controls: ?controls=1)"
+	@echo; echo "Dashboard:   http://localhost:8080   (k9s panel: press k, or ?k9s=1; staff controls: s to collapse, ?controls=0 to hide)"
 	@echo "Temporal UI: http://localhost:$(UI_PORT)"
 	@echo "k9s window:  make k9s-window   (or make k9s in this terminal)"
 

@@ -153,8 +153,10 @@
   </div>
 
   <div class="controls card glass" id="controls" hidden>
-    <span class="eyebrow">Staff controls</span>
-    <div class="controls-row">
+    <button class="controls-head" id="controls-toggle" aria-expanded="true" aria-controls="controls-row" title="Collapse or expand (s)">
+      <span class="eyebrow">Staff controls</span><span class="chev" aria-hidden="true">▾</span>
+    </button>
+    <div class="controls-row" id="controls-row">
       <button class="button primary ultraviolet small" data-action="surge">Surge ⚡</button>
       <button class="button secondary ultraviolet small" data-action="pause" id="btn-pause">Pause</button>
       <button class="button secondary green small" data-action="rollout">Roll out version</button>

@@ -576,9 +576,32 @@
     t.textContent = msg; t.classList.add("show");
     clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("show"), 2600);
   }
-  if (params.has("controls") && !params.has("kiosk")) {
+  // On by default (collapsible); ?controls=0 or ?kiosk=1 hides them.
+  if (params.get("controls") !== "0" && !params.has("kiosk")) {
     const panel = $("controls");
     panel.hidden = false;
+    // The panel is pinned bottom-right; the footer leaves room for it so the QR stays visible.
+    document.body.classList.add("controls-on");
+    new ResizeObserver(() => {
+      document.body.style.setProperty("--controls-w", `${panel.offsetWidth}px`);
+      scheduleFit();
+    }).observe(panel);
+    // Collapsible, so the demo can run hands-off until someone wants a walkthrough.
+    const head = $("controls-toggle");
+    const setCollapsed = (collapsed) => {
+      panel.classList.toggle("collapsed", collapsed);
+      head.setAttribute("aria-expanded", String(!collapsed));
+      try { localStorage.setItem("controls-collapsed", collapsed ? "1" : "0"); } catch (_) {}
+    };
+    let savedCollapsed = null;
+    try { savedCollapsed = localStorage.getItem("controls-collapsed"); } catch (_) {}
+    setCollapsed(savedCollapsed === "1");
+    head.addEventListener("click", () => setCollapsed(!panel.classList.contains("collapsed")));
+    addEventListener("keydown", (e) => {
+      if (e.key !== "s" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.target.closest && e.target.closest(".xterm, input, textarea")) return; // typing into k9s
+      setCollapsed(!panel.classList.contains("collapsed"));
+    });
     panel.addEventListener("click", async (e) => {
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;
