@@ -18,7 +18,6 @@ spec:
       scaleTargetRef: {}
       # >= 1 so a new version is always polling (rollouts need pollers).
       minReplicaCount: 1
-      maxReplicaCount: 10
       pollingInterval: 5
       advanced:
         horizontalPodAutoscalerConfig:
