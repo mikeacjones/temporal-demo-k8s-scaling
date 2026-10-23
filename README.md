@@ -119,6 +119,8 @@ make k9s-window  # optional: pop k9s out into its own Terminal window
 
 The first run takes a few minutes while it pulls charts and images. After that, `make up` is quick.
 
+To present the demo, follow [RUNBOOK.md](RUNBOOK.md): the walkthrough beat by beat, the code behind each one, reset, and troubleshooting.
+
 | Command | |
 |---|---|
 | `make stop` | Stop the host-side processes |
