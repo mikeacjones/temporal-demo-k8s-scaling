@@ -1,6 +1,7 @@
 # Temporal Worker Controller + KEDA autoscaling booth demo.
 #
 #   make up      # everything: cluster, platform, images, workloads, dev server, dashboard
+#   make demo    # kill everything (cluster included) and relaunch from scratch
 #   make k9s     # full-screen k9s (runs inside the cluster); make k9s-window pops it out
 #   make down    # stop host processes and the cluster
 #
@@ -22,12 +23,23 @@ KEDA_CHART_VERSION       ?= 2.21.0
 CERT_MANAGER_VERSION     ?= v1.21.2
 PROMETHEUS_CHART_VERSION ?= 29.36.1
 
-.PHONY: up tools cluster platform images dashboard deploy booth booth-fg stop down reset k9s k9s-window status logs test web record
+.PHONY: up demo tools cluster platform images dashboard deploy booth booth-fg stop down reset k9s k9s-window status logs test web record
 
 up: tools booth cluster platform images deploy status ## Bring up the whole demo
 	@echo; echo "Dashboard:   http://localhost:8080   (k9s panel: press k, or ?k9s=1; staff controls: s to collapse, ?controls=0 to hide)"
 	@echo "Temporal UI: http://localhost:$(UI_PORT)"
 	@echo "k9s window:  make k9s-window   (or make k9s in this terminal)"
+
+demo: ## Kill everything, delete the cluster, and relaunch from scratch
+	@$(MAKE) --no-print-directory stop
+	@# Leftovers from a booth whose pid file is gone; supervisors first so nothing respawns.
+	-@pkill -f "scripts/booth.sh"
+	-@pkill -f "temporal server start-dev --ip 0.0.0.0 --port $(TEMPORAL_PORT) "
+	-@pkill -f "kubectl --context $(PROFILE) -n demo port-forward"
+	minikube delete -p $(PROFILE)
+	@# Create the cluster before the booth starts, or its cluster guard races this start with its own.
+	$(MAKE) --no-print-directory cluster
+	$(MAKE) --no-print-directory up
 
 tools:
 	@for t in go docker minikube kubectl helm temporal; do command -v $$t >/dev/null || { echo "missing: $$t"; exit 1; }; done
