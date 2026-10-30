@@ -166,7 +166,9 @@ temporal --disable-config-file --address localhost:7233 workflow update execute 
 
 ## Notes
 
-- **Worker Controller build.** The demo pins a digest of the controller's `main` image, not the v1.12.0 release. v1.12.0 can't substitute `{{temporal_worker_build_id}}` tokens inside KEDA ScaledObjects ([#616](https://github.com/temporalio/temporal-worker-controller/pull/616) landed after it), which made every version scale on the whole deployment's slot utilization. Draining versions then stayed scaled up. Switch `image.tag` in `deploy/helm/worker-controller-values.yaml` back to a release once one includes #616.
+- **Worker Controller build.** The demo uses the controller's [`v1.13.0`][twc-v1.13.0] release which supports `{{temporal_worker_build_id}}` tokens inside KEDA ScaledObjects ([#616](https://github.com/temporalio/temporal-worker-controller/pull/616) landed after it).
 - **Fast drainage.** The dev server is started with shorter version-drainage checks (`matching.wv.VersionDrainageStatus*`), so drained versions sunset within about a minute instead of several.
 - **Your Temporal CLI profile is ignored.** The binaries and scripts ignore the Temporal CLI config file, so a default profile pointing at Temporal Cloud can't redirect the demo.
 - **Fonts and images are bundled.** Aeonik, temporal.io's typeface, is commercial, so the dashboard uses Manrope with Noto Sans Mono (both OFL, bundled under `web/static/fonts`). The Temporal logo and Ziggy are Temporal brand assets.
+
+[twc-v1.13.0]: https://github.com/temporalio/temporal-worker-controller/milestone/12?closed=1
