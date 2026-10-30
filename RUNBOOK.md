@@ -260,11 +260,13 @@ spec:
 - The `temporal` trigger asks Temporal for this version's backlog on the `orders` Task Queue and wants one pod for every 5 waiting tasks. It reacts quickly when traffic arrives.
 - The `prometheus` trigger reads the busiest pod's slot use for this version from the Workers' SDK metrics, and adds pods above 70%. It keeps busy pods running when the backlog is briefly empty, because backlog doesn't count Activities that are already running.
 - KEDA runs whichever trigger asks for more pods. `minReplicaCount: 1` keeps every version polling, which a rollout needs to send it traffic.
-- The `{{temporal_worker_build_id}}` tokens in the Prometheus query need a Worker Controller build that includes [#616](https://github.com/temporalio/temporal-worker-controller/pull/616). The v1.12.0 release doesn't, so the demo pins a build from `main`. Without it, every version would scale on the whole deployment's slot use, and draining versions would stay scaled up.
+- The `{{temporal_worker_build_id}}` tokens in the Prometheus query need a Worker Controller build that includes [#616](https://github.com/temporalio/temporal-worker-controller/pull/616). The [v1.13.0][twc-v1.13.0] release of TWC added support for this functionality.
 - The ScaledObject sets no `maxReplicaCount`, so KEDA's default of 100 applies. In practice the minikube cluster's CPU and memory set the limit.
 - Lines 22–36 set how fast pods come and go: up to 4 pods every 10 seconds on the way up, and on the way down 2 pods every 15 seconds, using the highest pod count recommended in the last 30 seconds.
 
 **Docs:** [KEDA Temporal scaler](https://keda.sh/docs/latest/scalers/temporal/), [Worker Controller scaling recommendations](https://github.com/temporalio/temporal-worker-controller/blob/main/docs/scaling-recommendations.md)
+
+[twc-v1.13.0]: https://github.com/temporalio/temporal-worker-controller/milestone/12?closed=1
 
 ### Start a rollout by changing the pod template
 
