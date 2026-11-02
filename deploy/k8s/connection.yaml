@@ -6,4 +6,4 @@ kind: Connection
 metadata:
   name: dev-server
 spec:
-  hostPort: host.minikube.internal:7233
+  hostPort: temporal-dev-server.demo.svc.cluster.local:7233

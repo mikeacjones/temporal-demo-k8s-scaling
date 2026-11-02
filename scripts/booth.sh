@@ -2,7 +2,7 @@
 # Supervises the host-side pieces of the booth demo and restarts any that die:
 #   - Temporal dev server (in memory; the director re-creates its entity on restart)
 #   - kubectl port-forward to the in-cluster dashboard (localhost:8080)
-#   - a cluster guard that restarts Docker Desktop / minikube if they stop
+#   - a cluster guard that restarts Docker Desktop / the kind node if they stop
 # Logs go to .run/*.log. Stop with: make stop (or kill the PID in .run/booth.pid).
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -10,6 +10,8 @@ mkdir -p .run
 echo $$ > .run/booth.pid
 
 PROFILE="${PROFILE:-temporal-demo}"
+KUBE_CONTEXT="${KUBE_CONTEXT:-kind-$PROFILE}"
+NODE="$PROFILE-control-plane"
 WEB_PORT="${WEB_PORT:-8080}"
 TEMPORAL_PORT="${TEMPORAL_PORT:-7233}"
 UI_PORT=$((TEMPORAL_PORT + 1000))
@@ -44,13 +46,19 @@ cluster_guard() {
   while true; do
     if (( tick % 3 == 0 )); then
       if ! docker info >/dev/null 2>&1; then
-        echo "[$(date '+%F %T')] docker is down; starting Docker Desktop"
-        [ "$(uname)" = Darwin ] && open -ga Docker
+        # Only Docker Desktop on macOS can be started without root; on Linux, log and wait.
+        if [ "$(uname)" = Darwin ]; then
+          echo "[$(date '+%F %T')] docker is down; starting Docker Desktop"
+          open -ga Docker
+        else
+          echo "[$(date '+%F %T')] docker is down; waiting for it"
+        fi
         for _ in $(seq 1 60); do docker info >/dev/null 2>&1 && break; sleep 5; done
       fi
-      if docker info >/dev/null 2>&1 && ! minikube -p "$PROFILE" status --format '{{.APIServer}}' 2>/dev/null | grep -q Running; then
-        echo "[$(date '+%F %T')] minikube is down; starting it"
-        minikube start -p "$PROFILE"
+      # kind nodes don't restart with Docker (restart policy on-failure:1), so start it again.
+      if docker info >/dev/null 2>&1 && [ "$(docker inspect -f '{{.State.Running}}' "$NODE" 2>/dev/null)" = false ]; then
+        echo "[$(date '+%F %T')] kind node $NODE is stopped; starting it"
+        docker start "$NODE"
       fi
     fi
     # kubectl port-forward can hang (instead of exiting) when its pod is
@@ -74,7 +82,7 @@ supervise temporal temporal server start-dev \
   --dynamic-config-value matching.wv.VersionDrainageStatusRefreshInterval='"10s"'
 
 # Localhost only: the dashboard's staff controls are unauthenticated.
-supervise dashboard kubectl --context "$PROFILE" -n demo \
+supervise dashboard kubectl --context "$KUBE_CONTEXT" -n demo \
   port-forward --address 127.0.0.1 svc/dashboard "$WEB_PORT:80"
 
 supervise cluster-guard cluster_guard

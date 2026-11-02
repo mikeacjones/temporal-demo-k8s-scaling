@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: demo
 resources:
   - namespace.yaml
+  - dev-server.yaml
   - connection.yaml
   - order-worker.yaml
   - order-worker-autoscaling.yaml

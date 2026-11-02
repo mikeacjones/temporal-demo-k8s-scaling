@@ -1,0 +1,12 @@
+# The Temporal dev server runs on the host, outside the cluster. This
+# selector-less Service gives it one in-cluster name that works the same on
+# macOS and Linux. `make deploy` supplies its EndpointSlice with the host's
+# address and the dev server's port (scripts/dev-server-endpoint.sh).
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-dev-server
+spec:
+  ports:
+    - name: grpc
+      port: 7233

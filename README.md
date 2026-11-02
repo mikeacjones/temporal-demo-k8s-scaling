@@ -105,13 +105,13 @@ The design follows Temporal's [scaling recommendations](https://github.com/tempo
 
 ## Prerequisites
 
-macOS or Linux with: Docker (Desktop) with **≥ 8 GB** and 6 CPUs available, `minikube`, `kubectl`, `helm`, `go` ≥ 1.27, and the `temporal` CLI
+macOS or Linux with: Docker (Docker Desktop, or Docker Engine on Linux) with **≥ 8 GB** and 6 CPUs available, [`kind`](https://kind.sigs.k8s.io/), `kubectl`, `helm`, `go` ≥ 1.27, `curl`, and the `temporal` CLI. The kind cluster uses whatever CPU and memory Docker has.
 
 ## Run it
 
 ```bash
-make up          # dev server + minikube + cert-manager, Worker Controller, KEDA, Prometheus + images + workloads + dashboard
-make k9s-window  # optional: pop k9s out into its own Terminal window
+make up          # dev server + kind cluster + cert-manager, Worker Controller, KEDA, Prometheus + images + workloads + dashboard
+make k9s-window  # optional: pop k9s out into its own terminal window
 ```
 
 - Dashboard: <http://localhost:8080>. Press **`k`** (or the **k9s** button, or open `?k9s=1`) for the live k9s panel. Staff controls are on by default: press **`s`** or click their header to collapse them, or open `?controls=0` to hide them. Big screen: `?kiosk=1`.
@@ -125,10 +125,10 @@ To present the demo, follow [RUNBOOK.md](RUNBOOK.md): the walkthrough beat by be
 |---|---|
 | `make stop` | Stop the host-side processes |
 | `make down` | Stop host processes and the cluster (keeps it for a fast `make up`) |
-| `make reset` | Delete the minikube cluster |
+| `make reset` | Delete the kind cluster |
 | `make status` | WorkerDeployment / WRT / ScaledObject / HPA / pods |
 | `make logs` | Tail the host-side logs in `.run/` |
-| `make k9s` / `make k9s-window` | Full-size k9s (inside the dashboard pod), here or in a new Terminal window |
+| `make k9s` / `make k9s-window` | Full-size k9s (inside the dashboard pod), here or in a new terminal window |
 | `make dashboard` | Rebuild and roll only the dashboard, without triggering a worker rollout |
 | `make deploy` | Re-apply manifests. With new images (`make images deploy`) this is a manual rollout. |
 | `make test` | Unit tests |
@@ -140,7 +140,7 @@ To present the demo, follow [RUNBOOK.md](RUNBOOK.md): the walkthrough beat by be
 
 1. Give Docker Desktop ≥ 8 GB RAM. Turn off sleep and the screen saver.
 2. `make up`, then open `http://localhost:8080/?kiosk=1&k9s=1`. The dashboard always fits its window without scrolling: full screen on a TV, a small monitor, or half the screen next to a terminal. It switches to a stacked layout in narrow windows and hides secondary text when space is tight.
-3. **Proving it's real:** the k9s panel is a genuine k9s talking to the cluster. It sits beside the pod tiles at a fixed height (a full peak of pods, at most about a third of the screen), so new pods appear (flashing green) and terminating ones disappear without ever squeezing the chart. During rollouts, when there are more pods than rows, k9s scrolls its table. The pod tiles beside it shrink to fit instead of growing the row. For a full-size view, use `make k9s-window` (macOS) or `make k9s` in any terminal. Both attach to the same isolated k9s inside the dashboard pod.
+3. **Proving it's real:** the k9s panel is a genuine k9s talking to the cluster. It sits beside the pod tiles at a fixed height (a full peak of pods, at most about a third of the screen), so new pods appear (flashing green) and terminating ones disappear without ever squeezing the chart. During rollouts, when there are more pods than rows, k9s scrolls its table. The pod tiles beside it shrink to fit instead of growing the row. For a full-size view, use `make k9s-window` (macOS Terminal, or gnome-terminal / x-terminal-emulator on Linux) or `make k9s` in any terminal. Both attach to the same isolated k9s inside the dashboard pod.
    - **Take control:** click the k9s panel (its border turns green). Use `↑↓` to pick a pod, then **`ctrl-d`**, Tab to **OK**, and Enter to kill it. Within about 2 seconds the dashboard shows the pod terminating and its replacement starting, because the ReplicaSet brings it back. Press **`l`** on a pod for its live logs (orders being paid for and shipped, plus Temporal retrying injected failures) and `Esc` to go back. Click anywhere outside the panel to hand the keyboard back.
    - **Limits:** k9s can delete pods in `demo` and read their logs, and nothing else. It can't scale or delete deployments, exec into pods, or see other namespaces. Set `K9S_ALLOW_DELETE` to `"false"` in `deploy/k8s/dashboard.yaml` for a fully read-only panel.
 4. Use the staff controls (bottom right; **`s`** collapses them) for **Surge ⚡** (extra traffic for 60s), **Pause**, and **Roll out version**.

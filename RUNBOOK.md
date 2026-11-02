@@ -16,8 +16,8 @@ The demo makes three problems visible:
 
 ## Before you start
 
-- Give Docker Desktop at least 8 GB of memory and 6 CPUs. Turn off sleep and the screen saver.
-- Install `minikube`, `kubectl`, `helm`, Go 1.27 or later, and the [Temporal CLI](https://docs.temporal.io/cli).
+- Give Docker at least 8 GB of memory and 6 CPUs (Docker Desktop's resource settings; on Linux, the machine itself). Turn off sleep and the screen saver.
+- Install [`kind`](https://kind.sigs.k8s.io/), `kubectl`, `helm`, Go 1.27 or later, and the [Temporal CLI](https://docs.temporal.io/cli).
 - Run `make up` once before the event. The first run downloads charts and images and takes a few minutes. Later runs are quick.
 - If something else already uses port 7233, such as another dev server, see [Use a different Temporal port](#use-a-different-temporal-port).
 - Everything runs locally, against a Temporal dev server. Nothing runs on Temporal Cloud, and the demo uses no Actions.
@@ -231,7 +231,7 @@ spec:
         - type: temporal
           useCachedMetrics: true
           metadata:
-            endpoint: host.minikube.internal:7233
+            endpoint: temporal-dev-server.demo.svc.cluster.local:7233
             taskQueue: orders
             queueTypes: workflow,activity
             targetQueueSize: "5"
@@ -261,7 +261,7 @@ spec:
 - The `prometheus` trigger reads the busiest pod's slot use for this version from the Workers' SDK metrics, and adds pods above 70%. It keeps busy pods running when the backlog is briefly empty, because backlog doesn't count Activities that are already running.
 - KEDA runs whichever trigger asks for more pods. `minReplicaCount: 1` keeps every version polling, which a rollout needs to send it traffic.
 - The `{{temporal_worker_build_id}}` tokens in the Prometheus query need a Worker Controller build that includes [#616](https://github.com/temporalio/temporal-worker-controller/pull/616). The [v1.13.0][twc-v1.13.0] release of TWC added support for this functionality.
-- The ScaledObject sets no `maxReplicaCount`, so KEDA's default of 100 applies. In practice the minikube cluster's CPU and memory set the limit.
+- The ScaledObject sets no `maxReplicaCount`, so KEDA's default of 100 applies. In practice the CPU and memory Docker gives the kind node set the limit.
 - Lines 22–36 set how fast pods come and go: up to 4 pods every 10 seconds on the way up, and on the way down 2 pods every 15 seconds, using the highest pod count recommended in the last 30 seconds.
 
 **Docs:** [KEDA Temporal scaler](https://keda.sh/docs/latest/scalers/temporal/), [Worker Controller scaling recommendations](https://github.com/temporalio/temporal-worker-controller/blob/main/docs/scaling-recommendations.md)
@@ -424,8 +424,8 @@ temporal --disable-config-file --address localhost:7233 workflow terminate \
 When you're done:
 
 - `make stop` stops the dev server, the port-forward, and the cluster guard. The cluster keeps running.
-- `make down` stops those and the minikube cluster. The next `make up` resumes it quickly.
-- `make reset` deletes the minikube cluster entirely.
+- `make down` stops those and the kind node container. The next `make up` starts it again quickly.
+- `make reset` deletes the kind cluster entirely.
 
 Nothing in the demo runs on Temporal Cloud, so stopping it leaves nothing that uses Actions.
 
@@ -434,13 +434,14 @@ Nothing in the demo runs on Temporal Cloud, so stopping it leaves nothing that u
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | <http://localhost:8080> doesn't load | The port-forward hung when the dashboard pod was replaced | Wait about 20 seconds; the supervisor restarts it. If it doesn't, run `make stop`, then `make booth` |
-| The dashboard says "No pods yet. Is the cluster up?" | Docker Desktop or minikube stopped, for example after the laptop slept | Wait a minute; the cluster guard restarts both. Otherwise run `make up` |
+| The dashboard says "No pods yet. Is the cluster up?" | Docker or the kind node stopped, for example after the laptop slept | Wait a minute; the cluster guard starts the kind node again, and on macOS Docker Desktop too. Otherwise run `make up` |
+| Workers log `waiting for temporal` and never connect (Linux) | A host firewall (ufw, firewalld) blocks the kind network from reaching the dev server on the host | Allow the kind network's subnet (`docker network inspect kind`) to reach port 7233 (or your `TEMPORAL_PORT`) |
 | `make up` fails because port 7233 is in use | Another Temporal dev server is running | Use [a different Temporal port](#use-a-different-temporal-port) |
-| New pods stay `Pending` in k9s | The cluster is out of CPU or memory | Give Docker Desktop more resources, then `make reset` and `make up` with a larger `CPUS` or `MEMORY` |
-| **Worker versions** shows "last rollout failed" | The director couldn't patch the WorkerDeployment | Run `kubectl --context temporal-demo -n demo logs deploy/traffic-director` and look for `rollout failed` |
+| New pods stay `Pending` in k9s | The cluster is out of CPU or memory | Give Docker more CPU and memory, then restart the demo with `make demo` |
+| **Worker versions** shows "last rollout failed" | The director couldn't patch the WorkerDeployment | Run `kubectl --context kind-temporal-demo -n demo logs deploy/traffic-director` and look for `rollout failed` |
 | An old version stays `draining` | It still has running orders, or Temporal hasn't rechecked drainage yet | Wait about a minute. Check with `temporal --disable-config-file --address localhost:7233 worker deployment describe --name demo/order-worker` |
 | A drained version keeps its pods | The Worker Controller build lacks #616, so every version scales on the whole deployment's slot use | Check `image.tag` in `deploy/helm/worker-controller-values.yaml`, then run `make platform` |
-| **Slot utilization** stays at 0% under load | Prometheus isn't scraping the Workers | Run `kubectl --context temporal-demo -n monitoring get pods`, and rerun `make platform` if Prometheus isn't ready |
+| **Slot utilization** stays at 0% under load | Prometheus isn't scraping the Workers | Run `kubectl --context kind-temporal-demo -n monitoring get pods`, and rerun `make platform` if Prometheus isn't ready |
 | Rebuilding the dashboard started a rollout | `make images deploy` gives every image a new tag | Use `make dashboard` to rebuild only the dashboard |
 
 ## Run it locally
@@ -449,22 +450,24 @@ Today this is the only way to run the demo. The sections above already use the l
 
 ### Tools and versions
 
-- macOS or Linux, with Docker Desktop given at least 8 GB of memory and 6 CPUs
-- `minikube`, `kubectl`, and `helm`
+- macOS or Linux, with Docker (Docker Desktop, or Docker Engine on Linux) given at least 8 GB of memory and 6 CPUs
+- [`kind`](https://kind.sigs.k8s.io/), `kubectl`, `helm`, and `curl`
 - Go 1.27 or later
 - The [Temporal CLI](https://docs.temporal.io/cli)
 
-`make up` installs cert-manager, KEDA, Prometheus, and the Temporal Worker Controller into minikube at the versions pinned in the `Makefile`.
+`make up` installs cert-manager, KEDA, Prometheus, and the Temporal Worker Controller into a single-node kind cluster (`deploy/kind/cluster.yaml`) at the versions pinned in the `Makefile`.
+
+The Temporal dev server runs on the host. Pods reach it through the `temporal-dev-server` Service in `demo`; `make deploy` points that Service's EndpointSlice at the host (`host.docker.internal` under Docker Desktop, the kind network's gateway under Docker Engine on Linux).
 
 ### Commands and URLs
 
 | Command | What it does |
 |---|---|
-| `make up` | Starts the dev server, minikube, the cluster add-ons, the images, the workloads, and the dashboard |
+| `make up` | Starts the dev server, the kind cluster, the cluster add-ons, the images, the workloads, and the dashboard |
 | `make status` | Lists the WorkerDeployment, WorkerResourceTemplate, ScaledObjects, HPAs, Deployments, and pods |
 | `make logs` | Follows the host-side logs in `.run/` |
 | `make k9s` | Opens a full-size k9s in this terminal, running inside the dashboard pod |
-| `make k9s-window` | Opens the same k9s in a new Terminal window (macOS) |
+| `make k9s-window` | Opens the same k9s in a new terminal window (macOS Terminal; gnome-terminal or x-terminal-emulator on Linux) |
 | `make dashboard` | Rebuilds and restarts only the dashboard, without a Worker rollout |
 | `make images deploy` | Rebuilds every image and applies the manifests, which rolls out a new version |
 | `make test` | Runs the unit tests |

@@ -33,7 +33,7 @@ func main() {
 	}
 	addr := flag.String("addr", telemetry.Env("WEB_ADDR", "127.0.0.1:8080"), "listen address")
 	promURL := flag.String("prometheus", telemetry.Env("PROMETHEUS_URL", "http://localhost:9091"), "Prometheus base URL")
-	kubeContext := flag.String("kube-context", telemetry.Env("KUBE_CONTEXT", "temporal-demo"), "kubeconfig context")
+	kubeContext := flag.String("kube-context", telemetry.Env("KUBE_CONTEXT", "kind-temporal-demo"), "kubeconfig context")
 	k8sNS := flag.String("k8s-namespace", telemetry.Env("K8S_NAMESPACE", "demo"), "namespace of the demo workloads")
 	repoURL := flag.String("repo", telemetry.Env("REPO_URL", "https://github.com/mikeacjones/temporal-k8s-scaling-demo"), "URL for the QR code")
 	k9sCmd := flag.String("k9s", telemetry.Env("K9S_LAUNCHER", "auto"), `embedded k9s panel: "auto" (in-cluster k9s, else scripts/k9s.sh), a launcher path, or "" to disable`)

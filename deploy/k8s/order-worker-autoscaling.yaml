@@ -40,7 +40,7 @@ spec:
           # API call per HPA sync (the controller's scaling recommendations).
           useCachedMetrics: true
           metadata:
-            endpoint: host.minikube.internal:7233
+            endpoint: temporal-dev-server.demo.svc.cluster.local:7233
             taskQueue: orders
             queueTypes: workflow,activity
             targetQueueSize: "5"

@@ -1,0 +1,13 @@
+# kind cluster for the booth demo: one node, with the HPA controller syncing
+# every 5s (default 15s) so scaling reacts quickly on screen.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: ClusterConfiguration
+        controllerManager:
+          extraArgs:
+            - name: horizontal-pod-autoscaler-sync-period
+              value: 5s
